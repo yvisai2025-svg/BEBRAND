@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src  'self' 'unsafe-inline'
+                   https://cdn.jsdelivr.net
+                   https://list.notibot.ru
+                   https://fonts.googleapis.com;
+        style-src   'self' 'unsafe-inline'
+                   https://fonts.googleapis.com
+                   https://fonts.gstatic.com;
+        font-src    'self'
+                   https://fonts.gstatic.com;
+        img-src     'self' data: https:;
+        connect-src 'self' https:;
+      " />
+<title>Points of You • Игра с Зинаидой Богдановой</title>
+
+<script src="https://list.notibot.ru/notibot-bridge.js"></script>
+<script>
+  window.notibotInitData = null;
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'NOTIBOT_INIT' && event.data.data) {
+      window.notibotInitData = event.data.data;
+      if (typeof handleNotibotInit === 'function') {
+        handleNotibotInit(event.data.data.user, event.data.data.app);
+      }
+    }
+  });
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+
+<style type="text/tailwindcss">
+  @theme {
+    --font-display:      'Unbounded', 'Manrope', sans-serif;
+    --font-sans:         'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    --color-canvas:      #F7F3EE;
+    --color-surface:     #FFFFFF;
+    --color-card-border: #E6DED4;
+    --color-primary:     #D9542B;
+    --color-secondary:   #2F6F6A;
+    --color-text-main:   #1E1B18;
+    --color-text-muted:  #6B635B;
+    --shadow-card:       0 4px 20px rgba(30,27,24,.06);
+
+    --color-nb-bg:       var(--nb-bg,     var(--color-canvas));
+    --color-nb-text:     var(--nb-text,   var(--color-text-main));
+    --color-nb-text-2:   var(--nb-text-2, var(--color-text-muted));
+    --color-nb-accent:   var(--nb-accent, var(--color-primary));
+  }
+</style>
+
+<style>
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: #F7F3EE;
+    color: #1E1B18;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .screen {
+    display: none;
+    opacity: 0;
+    transform: scale(0.96);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .screen.active {
+    display: block;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .loader-screen {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--nb-bg, #F7F3EE);
+    transition: opacity .2s ease;
+  }
+  .loader-spinner {
+    width: 40px; height: 40px; border-radius: 9999px;
+    border: 3px solid #E6DED4; border-top-color: #D9542B;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Accordion */
+  .acc-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .acc-item.open .acc-body { grid-template-rows: 1fr; }
+  .acc-body > div { overflow: hidden; }
+  .acc-chevron { transition: transform .3s ease; }
+  .acc-item.open .acc-chevron { transform: rotate(180deg); }
+
+  /* Reveal */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+
+  /* Sticky CTA */
+  #sticky-cta {
+    transform: translateY(120%);
+    transition: transform .35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #sticky-cta.show { transform: translateY(0); }
+
+  .timer-num { font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    #hero-parallax-wrap, .hero-float { transform: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen" class="loader-screen">
+  <div class="loader-spinner mb-4"></div>
+  <span class="text-sm tracking-widest text-nb-accent uppercase font-bold animate-pulse">Загрузка...</span>
+</div>
+
+<div class="max-w-md mx-auto min-h-[100dvh] bg-canvas relative overflow-x-hidden">
+<div id="screen-start" class="screen active">
+
+  <!-- ═══════════ HEADER / ПЕРСОНАЛИЗАЦИЯ ═══════════ -->
+  <header id="top-bar" data-section-name="Шапка" class="absolute top-0 left-0 right-0 z-30 px-5 pt-4 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2.5 min-w-0 bg-surface/85 backdrop-blur-md rounded-full pl-1 pr-4 py-1 border border-card-border shadow-card">
+      <div id="userAvatar" class="w-8 h-8 rounded-full bg-secondary text-white text-xs font-bold flex items-center justify-center shrink-0 overflow-hidden">?</div>
+      <span id="userGreeting" class="text-sm font-semibold text-text-main truncate min-w-0">Привет!</span>
+    </div>
+    <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-text-main bg-surface/85 backdrop-blur-md rounded-full px-3 py-2 border border-card-border shrink-0">Points of You</span>
+  </header>
+
+  <!-- ═══════════ HERO ═══════════ -->
+  <section id="hero" data-section-name="Первый экран" class="relative overflow-hidden min-h-[560px] flex flex-col justify-end items-start text-left">
+    <div id="hero-parallax-wrap" class="absolute -top-[20%] left-0 w-full h-[145%] bg-[#E9DFD3] will-change-transform">
+      <img
+        id="hero-img"
+        data-replaceable-image="true"
+        src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=900&q=80"
+        alt="Люди за столом во время игровой сессии"
+        class="w-full h-full object-cover pointer-events-auto cursor-pointer select-none"
+        draggable="false"
+        onerror="this.style.opacity='0';"
+      />
+    </div>
+    <div class="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/85 to-canvas/10 pointer-events-none"></div>
+
+    <div class="hero-float relative z-10 w-full px-5 pt-28 pb-8">
+      <div class="inline-flex flex-wrap items-center gap-x-2 gap-y-1 bg-surface border border-card-border rounded-2xl px-3.5 py-2 shadow-card mb-5 max-w-full">
+        <i data-lucide="calendar-days" class="w-4 h-4 text-primary shrink-0"></i>
+        <span class="text-[12.5px] font-semibold text-text-main break-words min-w-0">Сб, 24 октября • 11:00–14:30 • Гомель</span>
+        <span class="text-[12.5px] font-semibold text-secondary break-words min-w-0">+ Онлайн 28 октября</span>
+      </div>
+
+      <h1 class="font-display font-semibold text-[27px] leading-[1.15] text-text-main mb-4 break-words">
+        Points of You: <span class="text-primary">3,5 часа</span>, чтобы увидеть свою ситуацию с 4 сторон и уйти с планом
+      </h1>
+      <p class="text-[15px] leading-relaxed text-text-muted mb-5 break-words">
+        Игровая сессия по методу Diamond: <b class="text-text-main font-semibold">Пауза → Расширение → Фокус → Действие</b>. Вы приходите с вопросом про работу, отношения или выбор и уходите с 1–3 конкретными шагами.
+      </p>
+
+      <div class="flex flex-wrap gap-2 mb-6">
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold bg-secondary/10 text-secondary rounded-full px-3 py-1.5"><i data-lucide="users" class="w-3.5 h-3.5"></i>До 8 человек</span>
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold bg-secondary/10 text-secondary rounded-full px-3 py-1.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>120+ игр</span>
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold bg-secondary/10 text-secondary rounded-full px-3 py-1.5"><i data-lucide="layers" class="w-3.5 h-3.5"></i>The Coaching Game & Punctum</span>
+      </div>
+
+      <!-- Таймер -->
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-4 mb-5">
+        <p id="timer-label" class="text-[13px] font-semibold text-text-main mb-3">До повышения цены с <span class="text-primary">45</span> до 60 BYN:</p>
+        <div id="timer-grid" class="grid grid-cols-4 gap-2">
+          <div class="bg-canvas rounded-xl py-2.5 text-center"><div id="t-d" class="timer-num font-display font-semibold text-xl text-primary">00</div><div class="text-[10px] uppercase tracking-wider text-text-muted mt-0.5">дней</div></div>
+          <div class="bg-canvas rounded-xl py-2.5 text-center"><div id="t-h" class="timer-num font-display font-semibold text-xl text-primary">00</div><div class="text-[10px] uppercase tracking-wider text-text-muted mt-0.5">часов</div></div>
+          <div class="bg-canvas rounded-xl py-2.5 text-center"><div id="t-m" class="timer-num font-display font-semibold text-xl text-primary">00</div><div class="text-[10px] uppercase tracking-wider text-text-muted mt-0.5">минут</div></div>
+          <div class="bg-canvas rounded-xl py-2.5 text-center"><div id="t-s" class="timer-num font-display font-semibold text-xl text-primary">00</div><div class="text-[10px] uppercase tracking-wider text-text-muted mt-0.5">секунд</div></div>
+        </div>
+        <div class="mt-3.5">
+          <div class="flex items-center justify-between text-[12.5px] mb-1.5">
+            <span class="font-semibold text-text-main">Свободно <span id="seats-free">3</span> из <span id="seats-total">8</span> мест</span>
+            <span class="text-text-muted">офлайн, Гомель</span>
+          </div>
+          <div class="h-2 bg-canvas rounded-full overflow-hidden">
+            <div id="seats-bar" class="h-full bg-primary rounded-full transition-all duration-1000" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" onclick="handleCta(event)" data-cta="hero"
+        class="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold text-[15px] rounded-2xl py-4 px-5 shadow-[0_10px_24px_rgba(217,84,43,.32)] active:scale-[0.98] transition-transform">
+        Выбрать формат и занять место <i data-lucide="arrow-right" class="w-5 h-5"></i>
+      </button>
+      <p class="text-center text-xs text-text-muted mt-2.5">Запись в Telegram за 1 минуту</p>
+    </div>
+  </section>
+
+  <!-- ═══════════ ЦИФРЫ ═══════════ -->
+  <section id="stats" data-section-name="Цифры и результаты" class="px-5 pt-6 pb-10">
+    <div class="grid grid-cols-2 gap-x-4 gap-y-6 reveal">
+      <div class="col-span-2 border-b border-card-border pb-6">
+        <div class="font-display font-bold text-[56px] leading-none text-primary"><span class="count-up" data-target="4">0</span></div>
+        <p class="text-sm text-text-muted mt-2 max-w-[260px]">угла зрения на одну ситуацию: увидеть, расширить, сфокусировать, действовать</p>
+      </div>
+      <div>
+        <div class="font-display font-bold text-[34px] leading-none text-text-main"><span class="count-up" data-target="72">0</span><span class="text-secondary text-xl"> ч</span></div>
+        <p class="text-[13px] text-text-muted mt-1.5">горизонт первого шага, который вы запишете</p>
+      </div>
+      <div>
+        <div class="font-display font-bold text-[34px] leading-none text-text-main"><span class="count-up" data-target="120">0</span><span class="text-secondary text-xl">+</span></div>
+        <p class="text-[13px] text-text-muted mt-1.5">проведённых игр у ведущей</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ВЕДУЩАЯ ═══════════ -->
+  <section id="host" data-section-name="Ведущая" class="px-5 pb-10">
+    <p class="text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-2">Ведущая</p>
+    <div class="bg-surface rounded-2xl border border-card-border shadow-card overflow-hidden reveal">
+      <div class="relative h-[300px] bg-[#E9DFD3]">
+        <img
+          id="host-img"
+          data-replaceable-image="true"
+          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80"
+          alt="Зинаида Богданова, игропрактик Points of You"
+          class="absolute inset-0 w-full h-full object-cover object-top pointer-events-auto cursor-pointer select-none"
+          draggable="false"
+          onerror="this.style.opacity='0';"
+        />
+        <div class="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/55 to-transparent pointer-events-none"></div>
+        <div class="absolute left-4 bottom-4 right-4 pointer-events-none">
+          <h2 class="font-display font-semibold text-xl text-white break-words">Зинаида Богданова</h2>
+          <p class="text-[13px] text-white/85">Сертифицированный игропрактик Points of You</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <ul class="space-y-2.5 mb-5">
+          <li class="flex items-start gap-2.5 text-sm text-text-main"><i data-lucide="badge-check" class="w-4.5 h-4.5 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Сертификация по методу Points of You</span></li>
+          <li class="flex items-start gap-2.5 text-sm text-text-main"><i data-lucide="users" class="w-4.5 h-4.5 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">120+ групповых и личных игр</span></li>
+          <li class="flex items-start gap-2.5 text-sm text-text-main"><i data-lucide="map-pin" class="w-4.5 h-4.5 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Живые игры в Гомеле и онлайн по всему миру</span></li>
+        </ul>
+        <div class="flex gap-3 bg-canvas rounded-xl p-4">
+          <i data-lucide="quote" class="w-5 h-5 text-primary shrink-0"></i>
+          <p class="text-[14px] leading-relaxed italic text-text-main min-w-0 break-words">Я не даю советов, я задаю вопросы, на которые у вас уже есть ответы.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ФОРМАТЫ / ТЕМЫ ═══════════ -->
+  <section id="formats" data-section-name="С чем приходят на игру" class="px-5 pb-10">
+    <p class="text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-2">С чем приходят</p>
+    <h2 class="font-display font-semibold text-[22px] leading-tight text-text-main mb-5">Один запрос — один конкретный результат</h2>
+    <div class="grid grid-cols-1 gap-3">
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-4 flex gap-4 reveal">
+        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="compass" class="w-5 h-5"></i></div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-[15px] text-text-main mb-1">Карьера и выбор</h3>
+          <p class="text-[13.5px] text-text-muted leading-snug break-words">«Уходить или оставаться», смена роли, новый проект.</p>
+          <p class="text-[13px] font-semibold text-secondary mt-2 break-words">→ Критерии решения и первый разговор, который нужно провести</p>
+        </div>
+      </div>
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-4 flex gap-4 reveal">
+        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="messages-square" class="w-5 h-5"></i></div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-[15px] text-text-main mb-1">Отношения и диалог</h3>
+          <p class="text-[13.5px] text-text-muted leading-snug break-words">Как начать трудный разговор с близким, партнёром, руководителем.</p>
+          <p class="text-[13px] font-semibold text-secondary mt-2 break-words">→ Первая фраза разговора и то, что вы хотите услышать в ответ</p>
+        </div>
+      </div>
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-4 flex gap-4 reveal">
+        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="battery-charging" class="w-5 h-5"></i></div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-[15px] text-text-main mb-1">Ресурс и пауза</h3>
+          <p class="text-[13.5px] text-text-muted leading-snug break-words">Где утекает энергия и что вернуть в свою неделю.</p>
+          <p class="text-[13px] font-semibold text-secondary mt-2 break-words">→ Одна привычка «убрать» и одна «добавить» на ближайшие 7 дней</p>
+        </div>
+      </div>
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-4 flex gap-4 reveal">
+        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i data-lucide="users" class="w-5 h-5"></i></div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-[15px] text-text-main mb-1">Команда</h3>
+          <p class="text-[13.5px] text-text-muted leading-snug break-words">Корпоративная сессия по запросу: ценности, роли, напряжение в команде.</p>
+          <p class="text-[13px] font-semibold text-secondary mt-2 break-words">→ Общая картина и договорённости, под которыми подпишутся все</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ПРОГРАММА ═══════════ -->
+  <section id="agenda" data-section-name="Программа сессии" class="px-5 pb-10">
+    <p class="text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-2">Программа • 24 октября</p>
+    <h2 class="font-display font-semibold text-[22px] leading-tight text-text-main mb-1">Как пройдут 3,5 часа</h2>
+    <p class="text-[13.5px] text-text-muted mb-5">Тапните по этапу, чтобы узнать, что на нём происходит.</p>
+
+    <div id="agenda-list" class="relative pl-5">
+      <div class="absolute left-[7px] top-3 bottom-3 w-[2px] bg-secondary/20 pointer-events-none"></div>
+
+      <div class="acc-item relative mb-3">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-canvas border-[3px] border-secondary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">10:45</span>
+            <span class="flex-1 min-w-0 font-bold text-[15px] text-text-main break-words">Сбор, чай</span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Знакомство и правила безопасности группы: всё, что сказано за столом, остаётся за столом. Делитесь ровно тем, чем хотите.</p></div></div>
+        </div>
+      </div>
+
+      <div class="acc-item relative mb-3">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-canvas border-[3px] border-secondary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">11:00</span>
+            <span class="flex-1 min-w-0 font-bold text-[15px] text-text-main break-words">Запрос</span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Формулируем личный вопрос по шаблону «Как мне…?». Пример слабого запроса: «Что делать с работой?». Пример сильного: «Как мне за месяц понять, остаюсь ли я в компании?»</p></div></div>
+        </div>
+      </div>
+
+      <div class="acc-item relative mb-3">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-primary border-[3px] border-primary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">11:20</span>
+            <span class="flex-1 min-w-0 break-words"><span class="block font-bold text-[15px] text-text-main">Пауза</span><span class="text-xs text-primary font-semibold">Этап 1 Diamond</span></span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Выбираете фото-карту вслепую и в открытую. Разбираем, что вы видите на снимке и почему ваш взгляд зацепился именно за это. Так проявляется то, что вы пока не проговаривали словами.</p></div></div>
+        </div>
+      </div>
+
+      <div class="acc-item relative mb-3">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-primary border-[3px] border-primary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">12:00</span>
+            <span class="flex-1 min-w-0 break-words"><span class="block font-bold text-[15px] text-text-main">Расширение</span><span class="text-xs text-primary font-semibold">Этап 2 Diamond</span></span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Карты-слова и вопросы-провокации. Смотрим на ситуацию глазами другого человека: коллеги, партнёра, себя через 5 лет. Цель — найти варианты, которые раньше не рассматривались.</p></div></div>
+        </div>
+      </div>
+
+      <div class="relative mb-3">
+        <span class="absolute -left-5 top-[14px] w-4 h-4 rounded-full bg-canvas border-[3px] border-card-border pointer-events-none"></span>
+        <div class="flex items-center gap-3 rounded-2xl border border-dashed border-card-border px-4 py-3">
+          <span class="font-display text-[13px] font-semibold text-text-muted w-12 shrink-0">12:40</span>
+          <i data-lucide="coffee" class="w-4 h-4 text-text-muted shrink-0"></i>
+          <span class="text-[14px] font-semibold text-text-muted">Перерыв 15 минут</span>
+        </div>
+      </div>
+
+      <div class="acc-item relative mb-3">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-primary border-[3px] border-primary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">12:55</span>
+            <span class="flex-1 min-w-0 break-words"><span class="block font-bold text-[15px] text-text-main">Фокус</span><span class="text-xs text-primary font-semibold">Этап 3 Diamond</span></span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Сужаем всё увиденное до одного главного инсайта. Работа в парах: партнёр задаёт уточняющие вопросы, пока формулировка не станет ясной вам самим.</p></div></div>
+        </div>
+      </div>
+
+      <div class="acc-item relative mb-3">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-primary border-[3px] border-primary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">13:40</span>
+            <span class="flex-1 min-w-0 break-words"><span class="block font-bold text-[15px] text-text-main">Действие</span><span class="text-xs text-primary font-semibold">Этап 4 Diamond</span></span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Определяем шаг на ближайшие 72 часа: что именно, когда и с кем. Фиксируем его в карточке-напоминании, которую вы забираете с собой.</p></div></div>
+        </div>
+      </div>
+
+      <div class="acc-item relative">
+        <span class="absolute -left-5 top-[18px] w-4 h-4 rounded-full bg-canvas border-[3px] border-secondary pointer-events-none"></span>
+        <div class="bg-surface rounded-2xl border border-card-border shadow-card">
+          <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+            <span class="font-display text-[13px] font-semibold text-secondary w-12 shrink-0">14:15</span>
+            <span class="flex-1 min-w-0 font-bold text-[15px] text-text-main break-words">Круг завершения</span>
+            <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+          </button>
+          <div class="acc-body"><div><p class="px-4 pb-4 pl-[76px] text-[13.5px] leading-relaxed text-text-muted">Каждый называет одно слово, с которым уходит. Фото вашего расклада карт — в подарок, чтобы вернуться к нему через неделю.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ТАРИФЫ ═══════════ -->
+  <section id="pricing" data-section-name="Тарифы" class="px-5 pb-10">
+    <p class="text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-2">Форматы участия</p>
+    <h2 class="font-display font-semibold text-[22px] leading-tight text-text-main mb-5">Выберите, как вам удобнее</h2>
+
+    <div class="space-y-4">
+      <!-- Онлайн -->
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-5 reveal">
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <div class="min-w-0">
+            <h3 class="font-display font-semibold text-lg text-text-main">Онлайн</h3>
+            <p class="text-[13px] text-text-muted">Ср, 28 октября • 19:00 МСК • Zoom</p>
+          </div>
+          <i data-lucide="wifi" class="w-5 h-5 text-secondary shrink-0 mt-1"></i>
+        </div>
+        <div class="font-display font-bold text-[30px] text-text-main my-3">35 <span class="text-base font-semibold text-text-muted">BYN</span></div>
+        <ul class="space-y-2 mb-5">
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Сессия 2,5 часа в Zoom</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Цифровые карты на экране</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">PDF с вопросами для самостоятельной практики</span></li>
+        </ul>
+        <button type="button" onclick="handleCta(event)" data-tariff="online" class="w-full flex items-center justify-center gap-2 border-2 border-text-main text-text-main font-bold text-[15px] rounded-2xl py-3.5 active:scale-[0.98] transition-transform">
+          Записаться онлайн <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Офлайн -->
+      <div class="relative bg-surface rounded-2xl border-2 border-primary shadow-[0_10px_30px_rgba(217,84,43,.14)] p-5 reveal">
+        <span class="absolute -top-3 left-5 bg-primary text-white text-[11px] font-bold uppercase tracking-wider rounded-full px-3 py-1">Чаще выбирают</span>
+        <div class="flex items-start justify-between gap-3 mb-1 mt-1">
+          <div class="min-w-0">
+            <h3 class="font-display font-semibold text-lg text-text-main">Офлайн, Гомель</h3>
+            <p class="text-[13px] text-text-muted">Сб, 24 октября • 11:00–14:30</p>
+          </div>
+          <i data-lucide="armchair" class="w-5 h-5 text-primary shrink-0 mt-1"></i>
+        </div>
+        <div class="flex items-baseline gap-2.5 my-3">
+          <span id="offline-price" class="font-display font-bold text-[30px] text-primary">45 <span class="text-base font-semibold">BYN</span></span>
+          <span id="offline-old-price" class="text-sm text-text-muted line-through">60 BYN</span>
+        </div>
+        <p id="offline-price-note" class="text-xs font-semibold text-secondary -mt-1 mb-3">Ранняя цена действует до 18 октября</p>
+        <ul class="space-y-2 mb-5">
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-primary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Место за столом в группе до 8 человек</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-primary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Чай и перерыв</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-primary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Фото вашего расклада</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-primary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Карточка «шаг на 72 часа»</span></li>
+        </ul>
+        <button type="button" onclick="handleCta(event)" data-tariff="offline" class="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold text-[15px] rounded-2xl py-4 shadow-[0_10px_24px_rgba(217,84,43,.3)] active:scale-[0.98] transition-transform">
+          Занять место за столом <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+        <p class="text-center text-xs text-text-muted mt-2.5">Свободно <span class="seats-free-mirror">3</span> из 8 • точный адрес пришлём после записи</p>
+      </div>
+
+      <!-- Индивидуальная -->
+      <div class="bg-surface rounded-2xl border border-card-border shadow-card p-5 reveal">
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <div class="min-w-0">
+            <h3 class="font-display font-semibold text-lg text-text-main">Индивидуальная</h3>
+            <p class="text-[13px] text-text-muted">Офлайн или онлайн • дата по договорённости</p>
+          </div>
+          <i data-lucide="user" class="w-5 h-5 text-secondary shrink-0 mt-1"></i>
+        </div>
+        <div class="font-display font-bold text-[30px] text-text-main my-3">90 <span class="text-base font-semibold text-text-muted">BYN</span></div>
+        <ul class="space-y-2 mb-5">
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Личная сессия 1,5 часа</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Разбор одного запроса вглубь, без свидетелей</span></li>
+          <li class="flex items-start gap-2 text-sm text-text-main"><i data-lucide="check" class="w-4 h-4 text-secondary shrink-0 mt-0.5"></i><span class="min-w-0 break-words">Follow-up сообщение через неделю</span></li>
+        </ul>
+        <button type="button" onclick="handleCta(event)" data-tariff="individual" class="w-full flex items-center justify-center gap-2 border-2 border-text-main text-text-main font-bold text-[15px] rounded-2xl py-3.5 active:scale-[0.98] transition-transform">
+          Договориться о сессии <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ЧТО ВЫ УНЕСЁТЕ ═══════════ -->
+  <section id="takeaways" data-section-name="Что вы унесёте" class="px-5 pb-10">
+    <div class="bg-secondary rounded-2xl p-5 text-white reveal">
+      <h2 class="font-display font-semibold text-lg mb-4">После игры у вас останутся</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white/10 rounded-xl p-3.5"><i data-lucide="target" class="w-5 h-5 mb-2"></i><p class="text-[13px] leading-snug break-words">1 главный инсайт по запросу</p></div>
+        <div class="bg-white/10 rounded-xl p-3.5"><i data-lucide="footprints" class="w-5 h-5 mb-2"></i><p class="text-[13px] leading-snug break-words">1–3 шага на 72 часа</p></div>
+        <div class="bg-white/10 rounded-xl p-3.5"><i data-lucide="camera" class="w-5 h-5 mb-2"></i><p class="text-[13px] leading-snug break-words">Фото вашего расклада</p></div>
+        <div class="bg-white/10 rounded-xl p-3.5"><i data-lucide="message-circle" class="w-5 h-5 mb-2"></i><p class="text-[13px] leading-snug break-words">Связь с ведущей в Telegram</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ FAQ ═══════════ -->
+  <section id="faq" data-section-name="Вопросы и ответы" class="px-5 pb-10">
+    <p class="text-xs font-bold uppercase tracking-[0.16em] text-secondary mb-2">FAQ</p>
+    <h2 class="font-display font-semibold text-[22px] leading-tight text-text-main mb-5">Частые вопросы</h2>
+    <div class="space-y-2.5">
+      <div class="acc-item bg-surface rounded-2xl border border-card-border">
+        <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+          <span class="flex-1 min-w-0 font-bold text-[14.5px] text-text-main break-words">Нужно ли что-то знать о Points of You заранее?</span>
+          <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+        </button>
+        <div class="acc-body"><div><p class="px-4 pb-4 text-[13.5px] leading-relaxed text-text-muted">Нет. Достаточно прийти с вопросом, который сейчас для вас важен. Если вопроса нет, сформулируем его вместе в первые 20 минут.</p></div></div>
+      </div>
+      <div class="acc-item bg-surface rounded-2xl border border-card-border">
+        <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+          <span class="flex-1 min-w-0 font-bold text-[14.5px] text-text-main break-words">Это психотерапия или гадание?</span>
+          <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+        </button>
+        <div class="acc-body"><div><p class="px-4 pb-4 text-[13.5px] leading-relaxed text-text-muted">Ни то, ни другое. Это коучинговый инструмент: фотографии и слова на картах помогают посмотреть на ситуацию под новым углом. Карты ничего не предсказывают, ответы находите вы сами.</p></div></div>
+      </div>
+      <div class="acc-item bg-surface rounded-2xl border border-card-border">
+        <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+          <span class="flex-1 min-w-0 font-bold text-[14.5px] text-text-main break-words">Придётся рассказывать о личном при всех?</span>
+          <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+        </button>
+        <div class="acc-body"><div><p class="px-4 pb-4 text-[13.5px] leading-relaxed text-text-muted">Только то, чем захотите поделиться. Можно работать с запросом «про себя» и озвучивать лишь ассоциации к картам. Если тема очень личная, выбирайте индивидуальный формат.</p></div></div>
+      </div>
+      <div class="acc-item bg-surface rounded-2xl border border-card-border">
+        <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+          <span class="flex-1 min-w-0 font-bold text-[14.5px] text-text-main break-words">Чем онлайн отличается от живой игры?</span>
+          <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+        </button>
+        <div class="acc-body"><div><p class="px-4 pb-4 text-[13.5px] leading-relaxed text-text-muted">Онлайн короче (2,5 часа) и с цифровыми картами, участвовать можно из любой страны. Живая игра длиннее, с физическими колодами, чаем и фото вашего расклада.</p></div></div>
+      </div>
+      <div class="acc-item bg-surface rounded-2xl border border-card-border">
+        <button type="button" class="acc-head w-full flex items-center gap-3 text-left p-4">
+          <span class="flex-1 min-w-0 font-bold text-[14.5px] text-text-main break-words">Как происходит запись и оплата?</span>
+          <i data-lucide="chevron-down" class="acc-chevron w-5 h-5 text-text-muted shrink-0"></i>
+        </button>
+        <div class="acc-body"><div><p class="px-4 pb-4 text-[13.5px] leading-relaxed text-text-muted">Нажмите любую кнопку записи: откроется чат с Зинаидой в Telegram. Напишите формат и дату, вам пришлют детали оплаты и точный адрес.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ФИНАЛЬНЫЙ CTA ═══════════ -->
+  <section id="final-cta" data-section-name="Финальный призыв" class="px-5 pb-32">
+    <div class="bg-surface rounded-2xl border border-card-border shadow-card p-6 text-center reveal">
+      <h2 class="font-display font-semibold text-xl text-text-main mb-2 break-words">Осталось <span class="seats-free-mirror text-primary">3</span> места за столом</h2>
+      <p class="text-[14px] text-text-muted mb-5">Напишите Зинаиде — она ответит на вопросы и забронирует место.</p>
+      <button type="button" onclick="handleCta(event)" data-cta="final" class="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold text-[15px] rounded-2xl py-4 active:scale-[0.98] transition-transform">
+        <i data-lucide="send" class="w-4 h-4"></i> Написать в Telegram
+      </button>
+      <p class="text-xs text-text-muted mt-3">@Zinaidaorg</p>
+    </div>
+  </section>
+
+</div>
+
+<!-- ═══════════ STICKY CTA ═══════════ -->
+<div id="sticky-cta" class="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+  <div class="max-w-md mx-auto px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-canvas via-canvas/95 to-transparent">
+    <button type="button" onclick="handleCta(event)" data-cta="sticky"
+      class="pointer-events-auto w-full flex items-center justify-between gap-3 bg-primary text-white rounded-2xl py-3.5 px-5 shadow-[0_10px_24px_rgba(217,84,43,.35)] active:scale-[0.98] transition-transform">
+      <span class="text-left min-w-0">
+        <span class="block font-bold text-[15px] leading-tight">Выбрать формат и занять место</span>
+        <span id="sticky-sub" class="block text-xs opacity-85">от 35 BYN • свободно 3 из 8</span>
+      </span>
+      <i data-lucide="arrow-right" class="w-5 h-5 shrink-0"></i>
+    </button>
+  </div>
+</div>
+</div>
+
+<script>
+/* ═══════════ CONFIG ═══════════ */
+var CTA_METHOD = 'openLink';
+var CTA_ID = 'https://t.me/Zinaidaorg';
+var CTA_FALLBACK = 'https://t.me/Zinaidaorg';
+var EARLY_BIRD_DEADLINE = new Date('2026-10-18T23:59:59+03:00').getTime();
+var SEATS_FREE = 3;
+var SEATS_TOTAL = 8;
+
+/* ═══════════ HAPTIC ═══════════ */
+function safeHaptic(kind) {
+  try {
+    if (window.notibot) {
+      if (kind === 'success' || kind === 'error' || kind === 'warning') {
+        if (typeof notibot.hapticNotification === 'function') { notibot.hapticNotification(kind); return; }
+      } else if (kind === 'selection') {
+        if (typeof notibot.hapticSelection === 'function') { notibot.hapticSelection(); return; }
+      } else {
+        if (typeof notibot.hapticImpact === 'function') { notibot.hapticImpact(kind || 'light'); return; }
+      }
+    }
+    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+      var hf = Telegram.WebApp.HapticFeedback;
+      if ((kind === 'success' || kind === 'error' || kind === 'warning') && typeof hf.notificationOccurred === 'function') { hf.notificationOccurred(kind); return; }
+      if (kind === 'selection' && typeof hf.selectionChanged === 'function') { hf.selectionChanged(); return; }
+      if (typeof hf.impactOccurred === 'function') { hf.impactOccurred(kind === 'heavy' ? 'heavy' : (kind === 'medium' ? 'medium' : 'light')); return; }
+    }
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(kind === 'error' ? [30, 40, 30] : 12);
+    }
+  } catch (e) {}
+}
+
+/* ═══════════ CTA (Context-Aware) ═══════════ */
+function runNotibotAction(method, id, url) {
+  if (!window.notibot) return false;
+  if (method === 'openStorefront' && typeof window.notibot.openStorefront === 'function') { window.notibot.openStorefront(); return true; }
+  if (method === 'openUserCard' && typeof window.notibot.openUserCard === 'function') { window.notibot.openUserCard(); return true; }
+  if (method === 'openLink' && typeof window.notibot.openLink === 'function') { window.notibot.openLink(url || id || CTA_FALLBACK); return true; }
+  if ((method === 'openProduct' || method === 'openArticle') && typeof window.notibot[method] === 'function' && id) { window.notibot[method](id); return true; }
+  return false;
+}
+
+function isInsideFrame() {
+  try { return window.self !== window.top; } catch (err) { return true; }
+}
+
+function handleCta(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  safeHaptic('medium');
+  var btn = null;
+  if (e) {
+    btn = e.currentTarget || e.target;
+    if (btn && btn.closest) btn = btn.closest('button, a, [data-notibot-action]') || btn;
+  }
+  var action = btn && btn.getAttribute ? btn.getAttribute('data-notibot-action') : null;
+  var dataId = btn && btn.getAttribute ? btn.getAttribute('data-id') : null;
+  var dataUrl = btn && btn.getAttribute ? btn.getAttribute('data-url') : null;
+
+  if (window.notibot && isInsideFrame()) {
+    try {
+      if (action && runNotibotAction(action, dataId, dataUrl)) return;
+      if (!action && dataUrl && runNotibotAction('openLink', null, dataUrl)) return;
+      window.notibot[CTA_METHOD](CTA_ID);
+    } catch (err) {
+      try {
+        window.notibot.openLink(CTA_FALLBACK);
+      } catch (e2) {
+        window.location.href = CTA_FALLBACK;
+      }
+    }
+  } else {
+    window.location.href = dataUrl || CTA_FALLBACK;
+  }
+}
+
+/* ═══════════ ACCORDION ═══════════ */
+function initAccordions() {
+  var heads = document.querySelectorAll('.acc-head');
+  for (var i = 0; i < heads.length; i++) {
+    heads[i].addEventListener('click', function() {
+      var item = this.closest('.acc-item');
+      if (!item) return;
+      var isOpen = item.classList.contains('open');
+      item.classList.toggle('open', !isOpen);
+      this.setAttribute('aria-expanded', String(!isOpen));
+      safeHaptic('selection');
+    });
+  }
+}
+
+/* ═══════════ TIMER ═══════════ */
+function pad(n) { return n < 10 ? '0' + n : String(n); }
+var timerInterval = null;
+function tickTimer() {
+  var diff = EARLY_BIRD_DEADLINE - Date.now();
+  var d = document.getElementById('t-d');
+  var h = document.getElementById('t-h');
+  var m = document.getElementById('t-m');
+  var s = document.getElementById('t-s');
+  if (diff <= 0) {
+    if (timerInterval) clearInterval(timerInterval);
+    var label = document.getElementById('timer-label');
+    if (label) label.innerHTML = 'Ранняя цена завершилась. Текущая цена офлайн-участия — <span class="text-primary">60 BYN</span>';
+    var grid = document.getElementById('timer-grid');
+    if (grid) grid.style.display = 'none';
+    var price = document.getElementById('offline-price');
+    if (price) price.innerHTML = '60 <span class="text-base font-semibold">BYN</span>';
+    var old = document.getElementById('offline-old-price');
+    if (old) old.style.display = 'none';
+    var note = document.getElementById('offline-price-note');
+    if (note) note.textContent = 'Стандартная цена';
+    return;
+  }
+  var days = Math.floor(diff / 86400000);
+  var hours = Math.floor((diff % 86400000) / 3600000);
+  var mins = Math.floor((diff % 3600000) / 60000);
+  var secs = Math.floor((diff % 60000) / 1000);
+  if (d) d.textContent = pad(days);
+  if (h) h.textContent = pad(hours);
+  if (m) m.textContent = pad(mins);
+  if (s) s.textContent = pad(secs);
+}
+
+/* ═══════════ SEATS ═══════════ */
+function seatsWord(n) {
+  var n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return 'место';
+  if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return 'места';
+  return 'мест';
+}
+function initSeats() {
+  var free = document.getElementById('seats-free');
+  if (free) free.textContent = SEATS_FREE;
+  var total = document.getElementById('seats-total');
+  if (total) total.textContent = SEATS_TOTAL;
+  var mirrors = document.querySelectorAll('.seats-free-mirror');
+  for (var i = 0; i < mirrors.length; i++) mirrors[i].textContent = SEATS_FREE;
+  var sub = document.getElementById('sticky-sub');
+  if (sub) sub.textContent = 'от 35 BYN • свободно ' + SEATS_FREE + ' из ' + SEATS_TOTAL;
+  var finalH = document.querySelector('#final-cta h2');
+  if (finalH) finalH.innerHTML = 'Осталось <span class="seats-free-mirror text-primary">' + SEATS_FREE + '</span> ' + seatsWord(SEATS_FREE) + ' за столом';
+  var bar = document.getElementById('seats-bar');
+  if (bar) {
+    setTimeout(function() {
+      bar.style.width = Math.round(((SEATS_TOTAL - SEATS_FREE) / SEATS_TOTAL) * 100) + '%';
+    }, 400);
+  }
+}
+
+/* ═══════════ COUNT-UP + REVEAL ═══════════ */
+function countUp(el) {
+  var target = parseInt(el.getAttribute('data-target'), 10) || 0;
+  var start = null;
+  var dur = 1200;
+  function step(ts) {
+    if (!start) start = ts;
+    var p = Math.min((ts - start) / dur, 1);
+    var eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * eased);
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+function initObservers() {
+  var reveals = document.querySelectorAll('.reveal');
+  var counters = document.querySelectorAll('.count-up');
+  if (!('IntersectionObserver' in window)) {
+    for (var i = 0; i < reveals.length; i++) reveals[i].classList.add('in');
+    for (var j = 0; j < counters.length; j++) counters[j].textContent = counters[j].getAttribute('data-target');
+    return;
+  }
+  var io = new IntersectionObserver(function(entries) {
+    for (var k = 0; k < entries.length; k++) {
+      var en = entries[k];
+      if (en.isIntersecting) {
+        en.target.classList.add('in');
+        var cs = en.target.querySelectorAll('.count-up');
+        for (var c = 0; c < cs.length; c++) {
+          if (!cs[c].getAttribute('data-done')) { cs[c].setAttribute('data-done', '1'); countUp(cs[c]); }
+        }
+        io.unobserve(en.target);
+      }
+    }
+  }, { threshold: 0.15 });
+  for (var r = 0; r < reveals.length; r++) io.observe(reveals[r]);
+}
+
+/* ═══════════ PARALLAX + STICKY ═══════════ */
+var ticking = false;
+function onScroll() {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(function() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce && y < 900) {
+      var wrap = document.getElementById('hero-parallax-wrap');
+      if (wrap) wrap.style.transform = 'translate3d(0,' + (y * 0.48) + 'px,0) scale(' + (1 + y * 0.0003) + ')';
+      var floats = document.querySelectorAll('.hero-float');
+      for (var i = 0; i < floats.length; i++) floats[i].style.transform = 'translate3d(0,' + (-y * 0.18) + 'px,0)';
+    }
+    var sticky = document.getElementById('sticky-cta');
+    var pricing = document.getElementById('pricing');
+    if (sticky) {
+      var show = y > 420;
+      if (pricing) {
+        var r = pricing.getBoundingClientRect();
+        var vh = window.innerHeight || document.documentElement.clientHeight;
+        if (r.top < vh * 0.6 && r.bottom > vh * 0.3) show = false;
+      }
+      sticky.classList.toggle('show', show);
+    }
+    ticking = false;
+  });
+}
+
+/* ═══════════ NOTIBOT INIT (Режим А — хардкод) ═══════════ */
+var elLoading = document.getElementById('loading-screen');
+var elUserGreeting = document.getElementById('userGreeting');
+var elUserAvatar = document.getElementById('userAvatar');
+var elCreditsBadge = document.getElementById('creditsBadge');
+var elUserBalance = document.getElementById('userBalance');
+
+function getInitials(name) {
+  if (!name) return '?';
+  var parts = name.trim().split(/\s+/);
+  var a = parts[0] ? parts[0].charAt(0) : '';
+  var b = parts.length > 1 ? parts[1].charAt(0) : '';
+  return (a + b).toUpperCase() || '?';
+}
+function escapeAttr(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function applyPersonalization(user) {
+  if (!user) return;
+  if (elUserGreeting) {
+    elUserGreeting.textContent = user.displayName ? ('Привет, ' + user.displayName + '!') : 'Привет!';
+  }
+  if (elUserAvatar) {
+    var initials = getInitials(user.displayName);
+    if (user.photoURL) {
+      elUserAvatar.innerHTML = '<img src="' + escapeAttr(user.photoURL) + '" alt="" data-replaceable-image="false" style="width:100%;height:100%;object-fit:cover;border-radius:9999px;" onerror="this.style.display=\'none\';this.parentNode.textContent=\'' + initials + '\';" />';
+    } else {
+      elUserAvatar.textContent = initials;
+    }
+  }
+  if (elCreditsBadge && user.aiCredits !== undefined) {
+    elCreditsBadge.textContent = user.aiCredits;
+  }
+  if (elUserBalance && user.balance !== undefined) {
+    elUserBalance.textContent = user.balance;
+  }
+}
+function hideLoader() {
+  if (elLoading && elLoading.style.display !== 'none') {
+    elLoading.style.opacity = '0';
+    setTimeout(function() {
+      if (elLoading) elLoading.style.display = 'none';
+    }, 200);
+  }
+}
+function handleNotibotInit(user, app) {
+  applyPersonalization(user);
+  hideLoader();
+}
+function isNonEmptyObj(obj) {
+  try {
+    return obj && typeof obj === 'object' && Object.keys(obj).length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* ═══════════ BOOT ═══════════ */
+try { if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons(); } catch (e) {}
+initAccordions();
+initSeats();
+tickTimer();
+timerInterval = setInterval(tickTimer, 1000);
+initObservers();
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+if (window.notibot) {
+  try {
+    if (typeof window.notibot.onUpdate === 'function') {
+      window.notibot.onUpdate(function(user, app) {
+        applyPersonalization(user);
+        hideLoader();
+      });
+    }
+  } catch (e) {}
+
+  if (window.notibotInitData) {
+    handleNotibotInit(window.notibotInitData.user, window.notibotInitData.app);
+  } else if (isNonEmptyObj(window.notibot.app) || isNonEmptyObj(window.notibot.user)) {
+    handleNotibotInit(window.notibot.user, window.notibot.app);
+  }
+  setTimeout(function() {
+    hideLoader();
+  }, 800);
+} else {
+  setTimeout(function() {
+    hideLoader();
+  }, 300);
+}
+</script>
+</body>
+</html>
