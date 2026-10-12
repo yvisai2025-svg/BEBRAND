@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          script-src  'self' 'unsafe-inline'
+                     https://cdn.jsdelivr.net
+                     https://list.notibot.ru
+                     https://fonts.googleapis.com;
+          style-src   'self' 'unsafe-inline'
+                     https://fonts.googleapis.com
+                     https://fonts.gstatic.com;
+          font-src    'self'
+                     https://fonts.gstatic.com;
+          img-src     'self' data: https:;
+          connect-src 'self' https:;
+        " />
+  <title>BeBrand — Название точно ваше?</title>
+
+  <!-- Шрифты: Inter Tight + IBM Plex Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Notibot Bridge + ранний перехватчик -->
+  <script src="https://list.notibot.ru/notibot-bridge.js"></script>
+  <script>
+    window.notibotInitData = null;
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'NOTIBOT_INIT' && event.data.data) {
+        window.notibotInitData = event.data.data;
+        if (typeof handleNotibotInit === 'function') {
+          handleNotibotInit(event.data.data.user, event.data.data.app);
+        }
+      }
+    });
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      /* Дизайн-система «Реестр рисков» (Swiss) + фирменный цвет BeBrand — Режим А, хардкод */
+      --font-display:      'Inter Tight', -apple-system, 'Segoe UI', sans-serif;
+      --font-sans:         'Inter Tight', -apple-system, 'Segoe UI', sans-serif;
+      --font-mono:         'IBM Plex Mono', ui-monospace, monospace;
+
+      --color-canvas:      #EFEDE6;
+      --color-surface:     #FFFFFF;
+      --color-card-border: #D6D2C7;
+      --color-primary:     #9E2B2C;
+      --color-secondary:   #1D3BFF;
+      --color-graphite:    #5C5C5C;
+      --color-text-main:   #111111;
+      --color-text-muted:  #6B675E;
+      --color-ink:         #111111;
+
+      /* Совместимость с Notibot SDK (в Режиме А — только статические fallback) */
+      --color-nb-bg:       var(--nb-bg,     #EFEDE6);
+      --color-nb-text:     var(--nb-text,   #111111);
+      --color-nb-text-2:   var(--nb-text-2, #6B675E);
+      --color-nb-accent:   var(--nb-accent, #9E2B2C);
+    }
+  </style>
+
+  <style>
+    html, body { margin: 0; padding: 0; background: #EFEDE6; color: #111111; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter Tight', -apple-system, 'Segoe UI', sans-serif; overflow-x: hidden; }
+    section { scroll-margin-top: 76px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .tnum { font-variant-numeric: tabular-nums; }
+
+    .screen { display: none; opacity: 0; transform: scale(0.96); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .screen.active { display: block; opacity: 1; transform: scale(1); }
+
+    .loader-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--nb-bg, var(--color-canvas, #EFEDE6)); transition: opacity .2s ease; }
+    .loader-spinner { width: 44px; height: 44px; border-radius: 6px; border: 3px solid #D6D2C7; border-top-color: #9E2B2C; animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tw-caret { display: inline-block; width: 4px; height: .82em; background: #9E2B2C; margin-left: 4px; vertical-align: -0.06em; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    .mktu-tick { flex: 1 1 0; height: 18px; background: #D6D2C7; border-radius: 1px; transition: height .35s ease, background .35s ease; }
+    .mktu-tick.major { height: 26px; background: #BDB8AB; }
+    .mktu-tick.on { height: 34px; background: #1D3BFF; }
+
+    .paper { background-color: #FBFAF6; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, rgba(17,17,17,.06) 27px, rgba(17,17,17,.06) 28px); box-shadow: 0 18px 40px rgba(0,0,0,.35); transform: rotate(-0.8deg); }
+    .strike-path { fill: none; stroke: #C8383A; stroke-width: 6; stroke-linecap: round; }
+    .summons-cursor { display: inline-block; width: 7px; height: 1em; background: #111; vertical-align: -0.15em; animation: blink .8s steps(1) infinite; }
+    .reveal-out { opacity: 0; transform: translateY(10px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
+    .reveal-out.show { opacity: 1; transform: none; pointer-events: auto; }
+
+    input[type=range].rng { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; background: transparent; margin: 0; }
+    input[type=range].rng:focus { outline: none; }
+    input[type=range].rng::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(to right, #111111 var(--fill, 30%), #D6D2C7 var(--fill, 30%)); }
+    input[type=range].rng::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 6px; background: #9E2B2C; border: 3px solid #FFFFFF; margin-top: -10.5px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+    input[type=range].rng::-moz-range-track { height: 3px; background: #D6D2C7; border-radius: 2px; }
+    input[type=range].rng::-moz-range-progress { height: 3px; background: #111111; border-radius: 2px; }
+    input[type=range].rng::-moz-range-thumb { width: 20px; height: 20px; border-radius: 6px; background: #9E2B2C; border: 3px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+
+    .switch { width: 46px; height: 28px; border-radius: 6px; background: #D6D2C7; position: relative; flex-shrink: 0; transition: background .2s ease; border: 0; cursor: pointer; }
+    .switch::after { content: ''; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 4px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+    .switch[aria-checked="true"] { background: #9E2B2C; }
+    .switch[aria-checked="true"]::after { transform: translateX(18px); }
+
+    .chip { transition: background .2s ease, color .2s ease, border-color .2s ease; }
+    .chip.active { background: #111111; color: #FFFFFF; border-color: #111111; }
+
+    .sit-card { transition: border-color .2s ease, background .2s ease, transform .15s ease; }
+    .sit-card:active { transform: scale(.97); }
+    .sit-card.active { border-color: #111111; background: #111111; color: #FFFFFF; }
+    .sit-card.active .sit-icon { color: #E25A5C; }
+    .sit-card.active .sit-sub { color: rgba(255,255,255,.6); }
+
+    .cost-bar { height: 4px; background: #9E2B2C; border-radius: 2px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+    .cost-line.is-zero .cost-val { color: #6B675E; }
+    .cost-line.is-zero .cost-bar { background: #D6D2C7; }
+
+    .ans-btn { transition: background .2s ease, color .2s ease, border-color .2s ease; }
+    .ans-btn.sel-yes { background: #1D3BFF; border-color: #1D3BFF; color: #FFFFFF; }
+    .ans-btn.sel-no  { background: #9E2B2C; border-color: #9E2B2C; color: #FFFFFF; }
+    .ans-btn.sel-idk { background: #111111; border-color: #111111; color: #FFFFFF; }
+    .ip-panel { animation: ipIn .35s ease; }
+    @keyframes ipIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .flip-card { perspective: 1200px; }
+    .flip-card-inner { position: relative; width: 100%; height: 100%; transition: transform .75s cubic-bezier(.2,.8,.2,1); transform-style: preserve-3d; }
+    .flip-card-inner.is-flipped { transform: rotateY(180deg); }
+    .flip-card-front, .flip-card-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 8px; overflow: hidden; transition: opacity 0s linear .3s, visibility 0s linear .3s; }
+    .flip-card-front { background: #111111; }
+    .flip-card-back { background: #FFFFFF; transform: rotateY(180deg); border: 1px solid #D6D2C7; }
+    .flip-card-inner.is-flipped .flip-card-front { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+    .flip-card-inner:not(.is-flipped) .flip-card-back { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .voucher { position: relative; background: #FFFFFF; color: #111111; border-radius: 8px; }
+    .perf { position: relative; height: 22px; }
+    .perf::before, .perf::after { content: ''; position: absolute; top: 0; width: 22px; height: 22px; border-radius: 9999px; background: #111111; }
+    .perf::before { left: -11px; }
+    .perf::after { right: -11px; }
+
+    .story-ring { padding: 2px; border-radius: 9999px; background: #9E2B2C; }
+    .story-ring.seen { background: #D6D2C7; }
+    .story-bar { flex: 1 1 0; height: 3px; background: rgba(255,255,255,.3); border-radius: 2px; overflow: hidden; }
+    .story-bar > span { display: block; height: 100%; width: 0; background: #FFFFFF; }
+    #story-modal { transition: opacity .25s ease; }
+
+    .faq-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s cubic-bezier(.2,.8,.2,1); }
+    .faq-body > div { overflow: hidden; }
+    .faq-item.open .faq-body { grid-template-rows: 1fr; }
+    .faq-icon { transition: transform .3s ease; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); color: #9E2B2C; }
+
+    .field { width: 100%; background: #FFFFFF; border: 1px solid #D6D2C7; border-radius: 6px; padding: 14px 14px; font-size: 16px; color: #111111; font-family: inherit; transition: border-color .2s ease, box-shadow .2s ease; }
+    .field:focus { outline: none; border-color: #111111; box-shadow: 0 0 0 3px rgba(158,43,44,.14); }
+    .field.err { border-color: #9E2B2C; }
+    .form-flash { animation: flash 1.2s ease; }
+    @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(158,43,44,.45); } 100% { box-shadow: 0 0 0 18px rgba(158,43,44,0); } }
+
+    #thumb-bar { transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+    .btn-press { transition: transform .12s ease, filter .2s ease; }
+    .btn-press:active { transform: scale(.97); filter: brightness(.95); }
+  </style>
+</head>
+
+<body class="bg-canvas text-text-main font-sans antialiased">
+
+  <!-- ЛОАДЕР -->
+  <div id="loading-screen" class="loader-screen">
+    <div class="loader-spinner mb-4"></div>
+    <span class="text-sm tracking-widest text-nb-accent uppercase font-bold animate-pulse">Загрузка...</span>
+  </div>
+
+  <!-- СТАРТОВЫЙ ЭКРАН -->
+  <div id="screen-start" class="screen active">
+    <main class="max-w-md mx-auto min-h-[100dvh] relative bg-canvas overflow-x-hidden">
+
+      <!-- 1. ШАПКА -->
+      <section id="header" data-section-name="Шапка" class="sticky top-0 z-40 bg-canvas/92 backdrop-blur-md border-b border-card-border">
+        <div class="flex items-center justify-between gap-3 px-5 h-[60px]">
+          <div class="min-w-0 flex flex-col justify-center">
+            <img data-replaceable-image="true" src="data:image/png;base64,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" alt="BeBrand — Right to be brand" class="h-[32px] w-auto pointer-events-auto cursor-pointer select-none" draggable="false" />
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" onclick="handleCta(event)" data-notibot-action="openLink" data-url="https://t.me/BeBrand4msk" aria-label="Написать юристу в Telegram" class="btn-press w-9 h-9 rounded-[6px] border border-card-border bg-surface flex items-center justify-center">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+            <div id="userAvatar" class="w-9 h-9 rounded-full bg-graphite text-white flex items-center justify-center text-[12px] font-bold overflow-hidden shrink-0">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </div>
+          </div>
+        </div>
+        <div class="px-5 pb-2.5 -mt-1 flex items-center justify-between gap-2">
+          <span id="userGreeting" class="text-[13px] font-semibold min-w-0 truncate">Привет!</span>
+          <span class="flex items-center gap-1.5 shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            <span class="font-mono text-[10.5px] text-text-muted">Юрист на связи · ~15 мин</span>
+          </span>
+        </div>
+      </section>
+
+      <!-- 2. HERO -->
+      <section id="hero" data-section-name="Главный экран" class="relative min-h-[480px] overflow-hidden flex flex-col justify-end items-start text-left px-5 pb-7 pt-24 bg-ink">
+        <div id="hero-parallax-wrap" class="absolute -top-[20%] left-0 w-full h-[145%] will-change-transform">
+          <img id="hero-img"
+               data-replaceable-image="true"
+               src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80"
+               alt="Витрина магазина с вывеской бренда"
+               class="w-full h-full object-cover pointer-events-auto cursor-pointer select-none"
+               draggable="false"
+               onerror="this.style.opacity='0'" />
+        </div>
+        <div class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 bottom-0 h-[80%] bg-gradient-to-t from-canvas via-canvas/90 to-transparent pointer-events-none"></div>
+
+        <div id="hero-float" class="absolute top-4 left-5 right-5 flex justify-between gap-2 z-10 will-change-transform">
+          <span class="font-mono text-[10.5px] uppercase tracking-wider bg-ink/85 text-white px-2.5 py-1.5 rounded-[4px]">Right to be brand</span>
+          <span class="font-mono text-[10.5px] uppercase tracking-wider bg-surface/90 text-text-main px-2.5 py-1.5 rounded-[4px]">ст. 1515 ГК РФ</span>
+        </div>
+
+        <div class="relative z-10 w-full min-w-0">
+          <span class="inline-flex items-center gap-1.5 bg-primary text-white text-[12px] font-semibold px-2.5 py-1.5 rounded-[4px] mb-4 max-w-full">
+            <i data-lucide="scale" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="break-words">С 06.01.2026 — до 10 000 000 ₽ за чужое название</span>
+          </span>
+
+          <h1 aria-label="Название точно ваше? Домен оплачен — а название? Вывеску придётся менять? Латиница на вывеске законна?" class="font-display font-extrabold text-[40px] leading-[0.98] tracking-[-0.035em] min-h-[122px] break-words">
+            <span id="tw-pre">Название</span><br>
+            <span id="tw-word" class="text-primary"></span><span class="tw-caret" aria-hidden="true"></span>
+          </h1>
+
+          <p class="mt-3 text-[16px] leading-snug text-text-main/80 max-w-[340px]">
+            Узнайте до того, как узнает правообладатель. Бесплатный аудит бренда — отчёт за&nbsp;24&nbsp;часа.
+          </p>
+
+          <div class="mt-5 flex flex-col gap-3 w-full">
+            <button type="button" onclick="handleCta(event)" data-cta="form" data-service="Аудит бренда" class="btn-press w-full h-[56px] rounded-[6px] bg-primary text-white font-bold text-[16px] flex items-center justify-center gap-2 shadow-[0_10px_24px_rgba(158,43,44,.35)]">
+              Проверить название бесплатно <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </button>
+            <button type="button" onclick="scrollToBlock('calculator')" class="btn-press self-start text-[14px] font-semibold underline underline-offset-4 decoration-2 decoration-primary">
+              Сколько я потеряю без товарного знака?
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. МЕТРИКИ — BIG TYPO -->
+      <section id="metrics" data-section-name="Цена чужого названия" class="px-5 pt-10 pb-10">
+        <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-6">
+          <span>§ 01 / Цена чужого названия</span><span>ред. 2026</span>
+        </div>
+
+        <div class="reveal">
+          <div class="font-mono font-semibold text-primary text-[44px] leading-none tracking-[-0.04em] tnum break-words"><span data-countup="10000000">0</span>&nbsp;₽</div>
+          <p class="mt-2 text-[15px] leading-snug max-w-[310px]">столько с 2026 года может стоить чужое название <span class="text-text-muted">— компенсация правообладателю.</span></p>
+        </div>
+
+        <div class="h-px bg-card-border my-6"></div>
+
+        <div class="reveal">
+          <div class="font-mono font-semibold text-text-main text-[44px] leading-none tracking-[-0.04em]">×2</div>
+          <p class="mt-2 text-[15px] leading-snug max-w-[310px]">или двукратная стоимость товара под чужим названием <span class="text-text-muted">— плюс изъятие и уничтожение тиража.</span></p>
+        </div>
+
+        <div class="mt-7 bg-ink text-white rounded-[6px] px-4 py-4 flex items-center justify-between gap-3 reveal">
+          <span class="text-[15px] font-semibold leading-snug min-w-0 break-words">Аудит бренда: свободно ли ваше название</span>
+          <span class="font-mono font-semibold text-[28px] shrink-0">0&nbsp;₽</span>
+        </div>
+
+        <div class="mt-8 reveal">
+          <div class="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-wider text-text-muted mb-2">
+            <span>Шкала МКТУ · 45 классов</span>
+            <span id="mktu-count">— / 45</span>
+          </div>
+          <div id="mktu-scale" class="flex items-end gap-[2px] h-[36px]" aria-label="Шкала классов МКТУ"></div>
+          <div class="flex justify-between font-mono text-[10px] text-text-muted mt-1.5"><span>01</span><span>15</span><span>30</span><span>45</span></div>
+          <p id="mktu-label" class="mt-3 text-[13px] text-text-muted leading-snug">Выберите тип бизнеса ниже — подсветим вероятные классы для вашего знака.</p>
+        </div>
+      </section>
+
+      <!-- 4. EDGE-TO-EDGE «ПОВЕСТКА» -->
+      <section id="summons" data-section-name="Баннер «Повестка»" class="w-full relative overflow-hidden border-y border-card-border py-8 px-5 bg-ink text-white">
+        <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-white/50 mb-4">
+          <span>§ 02 / Сценарий</span><span>Документ № ———</span>
+        </div>
+        <h2 class="font-display font-extrabold text-[28px] leading-[1.02] tracking-[-0.03em] mb-4">Вот какое письмо может прийти <span class="text-[#E25A5C]">вам</span></h2>
+
+        <label for="summons-input" class="block font-mono text-[11px] uppercase tracking-wider text-white/60 mb-2">Введите название вашего бренда</label>
+        <div class="flex gap-2 mb-6">
+          <input id="summons-input" type="text" maxlength="40" autocomplete="off" placeholder="Например, «Север»"
+                 class="flex-1 min-w-0 h-[50px] bg-white/5 border border-white/20 rounded-[6px] px-3.5 text-[16px] text-white placeholder:text-white/35 font-mono focus:outline-none focus:border-[#E25A5C]" />
+          <button type="button" onclick="runSummons(true)" class="btn-press h-[50px] px-4 rounded-[6px] bg-surface text-ink font-bold text-[14px] shrink-0">Показать</button>
+        </div>
+
+        <div id="summons-paper" class="paper relative rounded-[4px] text-ink px-5 pt-5 pb-6 font-mono text-[13px] leading-[28px]">
+          <div class="flex justify-between text-[10.5px] uppercase tracking-wider text-text-muted leading-5 mb-2">
+            <span>Досудебная претензия</span><span id="summons-date">—</span>
+          </div>
+          <div class="leading-[28px]">Кому: владельцу бренда <b id="summons-to">«Ваш бренд»</b></div>
+          <div class="min-h-[168px] break-words"><span id="summons-text"></span><span id="summons-cursor" class="summons-cursor"></span></div>
+          <div class="mt-2 flex items-end justify-between gap-3">
+            <span class="text-[11px] text-text-muted leading-5">Представитель правообладателя</span>
+            <svg width="86" height="30" viewBox="0 0 86 30" aria-hidden="true"><path d="M2 22 C 12 4, 18 30, 28 14 S 44 6, 50 18 S 70 26, 84 8" fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </div>
+          <svg id="summons-strike" class="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true"><path id="summons-strike-path" class="strike-path" d="M0 0" /></svg>
+        </div>
+
+        <div id="summons-reveal" class="reveal-out mt-6">
+          <p class="font-display font-extrabold text-[24px] leading-[1.05] tracking-[-0.03em]">Этого письма не будет, если проверить название <span class="text-[#E25A5C]">сегодня.</span></p>
+          <button type="button" onclick="handleCta(event)" data-cta="form" data-service="Аудит бренда" data-from-summons="1" class="btn-press mt-4 w-full h-[56px] rounded-[6px] bg-primary text-white font-bold text-[16px] flex items-center justify-center gap-2 min-w-0">
+            <span id="summons-btn-label" class="truncate">Проверить «Ваш бренд»</span> <i data-lucide="arrow-right" class="w-5 h-5 shrink-0"></i>
+          </button>
+          <p class="mt-3 font-mono text-[11px] text-white/55 leading-relaxed">Аудит бренда — бесплатно. Отчёт за 24 часа.</p>
+        </div>
+      </section>
+
+      <!-- 5. ЧТО У ВАС МОЖНО ЗАЩИТИТЬ -->
+      <section id="ip-check" data-section-name="Что можно защитить" class="pt-10 pb-10">
+        <div class="px-5">
+          <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-5">
+            <span>§ 03 / Экспресс-проверка</span><span>1 вопрос</span>
+          </div>
+          <h2 class="font-display font-extrabold text-[30px] leading-[1.02] tracking-[-0.03em]">Что у вас <span class="text-primary">уже</span> можно защитить?</h2>
+          <p class="mt-2 text-[14px] text-text-muted leading-snug">Выберите, кто вы, и честно ответьте на один вопрос.</p>
+        </div>
+        <div id="ip-chips" class="mt-5 flex gap-2 overflow-x-auto no-scrollbar px-5 pb-1"></div>
+        <div class="px-5 mt-4">
+          <div id="ip-panel" class="bg-surface border border-card-border rounded-[8px] overflow-hidden"></div>
+        </div>
+      </section>
+
+      <!-- 6. КАЛЬКУЛЯТОР ЗАТРАТ -->
+      <section id="calculator" data-section-name="Калькулятор затрат без товарного знака" class="px-5 pt-10 pb-10 bg-surface border-y border-card-border">
+        <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-5">
+          <span>§ 04 / Калькулятор затрат</span><span>30 сек</span>
+        </div>
+        <h2 class="font-display font-extrabold text-[30px] leading-[1.02] tracking-[-0.03em]">Сколько придётся заплатить, если <span class="text-primary">не&nbsp;зарегистрировать</span> знак</h2>
+        <p class="mt-2 text-[14px] text-text-muted leading-snug">Посчитайте, во что обойдётся смена названия по претензии правообладателя.</p>
+
+        <div class="mt-7">
+          <div class="flex items-baseline gap-2 mb-3"><span class="font-mono text-[12px] text-primary font-semibold">01</span><span class="font-semibold text-[15px]">Ваш бизнес</span></div>
+          <div id="sit-grid" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div class="mt-8">
+          <div class="flex items-baseline gap-2 mb-3"><span class="font-mono text-[12px] text-primary font-semibold">02</span><span class="font-semibold text-[15px]">Что придётся переделать</span></div>
+          <div class="bg-canvas border border-card-border rounded-[8px] px-4 py-4 space-y-4">
+            <div>
+              <div class="flex items-baseline justify-between gap-2"><span class="text-[13px] text-text-muted min-w-0">Вывеска и оформление точки</span><span id="v-sign" class="font-mono text-[13px] font-semibold tnum shrink-0">—</span></div>
+              <input id="rng-sign" class="rng" type="range" min="0" max="2000000" step="10000" value="0" oninput="onSlider(this)" aria-label="Вывеска и оформление" />
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between gap-2"><span class="text-[13px] text-text-muted min-w-0">Упаковка и этикетки (тираж в утиль)</span><span id="v-pack" class="font-mono text-[13px] font-semibold tnum shrink-0">—</span></div>
+              <input id="rng-pack" class="rng" type="range" min="0" max="3000000" step="10000" value="0" oninput="onSlider(this)" aria-label="Упаковка и этикетки" />
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between gap-2"><span class="text-[13px] text-text-muted min-w-0">Сайт, домен, приложение, соцсети</span><span id="v-site" class="font-mono text-[13px] font-semibold tnum shrink-0">—</span></div>
+              <input id="rng-site" class="rng" type="range" min="0" max="3000000" step="10000" value="0" oninput="onSlider(this)" aria-label="Сайт, домен, приложение" />
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between gap-2"><span class="text-[13px] text-text-muted min-w-0">Реклама и продвижение под старым названием</span><span id="v-ads" class="font-mono text-[13px] font-semibold tnum shrink-0">—</span></div>
+              <input id="rng-ads" class="rng" type="range" min="0" max="5000000" step="50000" value="0" oninput="onSlider(this)" aria-label="Реклама и продвижение" />
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between gap-2"><span class="text-[13px] text-text-muted min-w-0">Выручка в месяц</span><span id="v-revenue" class="font-mono text-[13px] font-semibold tnum shrink-0">—</span></div>
+              <input id="rng-revenue" class="rng" type="range" min="0" max="10000000" step="100000" value="1000000" oninput="onSlider(this)" aria-label="Выручка в месяц" />
+            </div>
+            <div>
+              <div class="flex items-baseline justify-between gap-2"><span class="text-[13px] text-text-muted min-w-0">Простой продаж на время ребрендинга</span><span id="v-months" class="font-mono text-[13px] font-semibold tnum shrink-0">—</span></div>
+              <input id="rng-months" class="rng" type="range" min="0" max="6" step="1" value="1" oninput="onSlider(this)" aria-label="Месяцы простоя" />
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 bg-canvas border border-card-border rounded-[8px] flex items-center justify-between gap-3 px-4 py-3.5">
+          <span class="text-[14px] min-w-0 break-words">Учесть компенсацию правообладателю (до 10&nbsp;млн&nbsp;₽)</span>
+          <button type="button" id="tg-comp" role="switch" aria-checked="true" aria-label="Учесть компенсацию правообладателю" class="switch" onclick="toggleSwitch(this)"></button>
+        </div>
+
+        <div class="mt-8 border border-ink rounded-[8px] overflow-hidden">
+          <div class="px-4 pt-4 pb-2 bg-surface">
+            <div class="font-mono text-[10.5px] uppercase tracking-wider text-text-muted mb-2">Затраты без товарного знака</div>
+            <div id="cost-lines" class="font-mono text-[12.5px]"></div>
+          </div>
+          <div class="bg-ink text-white px-4 py-4">
+            <div class="font-mono text-[10.5px] uppercase tracking-wider text-white/55">Итого вы заплатите — до</div>
+            <div class="font-mono font-semibold text-[32px] leading-tight tracking-[-0.03em] tnum text-[#E25A5C] break-words" id="r-total">0 ₽</div>
+            <div class="mt-2 flex items-center justify-between gap-3 border-t border-white/15 pt-2.5">
+              <span class="text-[13px] text-white/75 min-w-0">Проверить название до претензии</span>
+              <span class="font-mono font-semibold text-[18px] shrink-0">0&nbsp;₽</span>
+            </div>
+            <button type="button" onclick="handleCta(event)" data-cta="form" data-service="Аудит бренда" data-from-calc="1" class="btn-press mt-3 w-full h-[54px] rounded-[6px] bg-primary text-white font-bold text-[15px] px-3 flex items-center justify-center gap-2">
+              Не платить это — проверить бренд
+            </button>
+          </div>
+        </div>
+        <p class="mt-3 text-[11.5px] text-text-muted leading-relaxed">Расчёт ориентировочный. Компенсация — максимальный размер по ст. 1515 ГК РФ (ред. с 06.01.2026). Остальные суммы — ваши собственные вложения, которые придётся повторить под новым названием.</p>
+      </section>
+
+      <!-- 7. 3D FLIP PEEK-SLIDER -->
+      <section id="services" data-section-name="Угрозы и защита" class="pt-10 pb-10">
+        <div class="px-5">
+          <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-5">
+            <span>§ 05 / Узнаёте себя?</span><span>5 ситуаций</span>
+          </div>
+          <h2 class="font-display font-extrabold text-[30px] leading-[1.02] tracking-[-0.03em]">Угроза <span class="text-primary">→</span> защита</h2>
+          <p class="mt-2 text-[14px] text-text-muted flex items-center gap-1.5"><i data-lucide="rotate-3d" class="w-4 h-4"></i> Нажмите на карточку, чтобы перевернуть</p>
+        </div>
+        <div id="flip-slider" class="mt-5 flex overflow-x-auto snap-x snap-mandatory gap-3.5 px-5 no-scrollbar pb-3 scroll-smooth"></div>
+        <div id="flip-dots" class="flex justify-center gap-1.5 mt-2"></div>
+      </section>
+
+      <!-- 8. СПЕЦПРЕДЛОЖЕНИЕ 152-ФЗ (EDGE-TO-EDGE ВАУЧЕР) -->
+      <section id="pdn-bonus" data-section-name="Спецпредложение: 152-ФЗ к регистрации" class="w-full relative overflow-hidden border-y border-card-border py-8 px-5 bg-ink text-white">
+        <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-white/50 mb-4">
+          <span>§ 06 / Бонус к регистрации</span><span>Спеццена</span>
+        </div>
+        <h2 class="font-display font-extrabold text-[28px] leading-[1.02] tracking-[-0.03em]">Регистрируете товарный знак? Документы по ПДн — <span class="text-[#E25A5C]">за полцены</span></h2>
+        <p class="mt-2 text-[14px] text-white/65 leading-snug">Только для тех, кто заказывает у нас регистрацию товарного знака.</p>
+
+        <div class="voucher mt-6 overflow-hidden">
+          <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-mono text-[10.5px] uppercase tracking-wider text-text-muted">Ваучер к регистрации ТЗ</div>
+              <div class="font-display font-extrabold text-[20px] leading-[1.1] tracking-[-0.02em] mt-1.5 break-words">152-ФЗ: аудит и документы по персональным данным</div>
+            </div>
+            <div class="font-mono font-semibold text-[34px] leading-none text-primary shrink-0">−50%</div>
+          </div>
+          <div class="perf flex items-center"><div class="w-full border-t-2 border-dashed border-card-border mx-4"></div></div>
+          <div class="px-5 pt-3 pb-5">
+            <ul class="space-y-2 text-[14px] leading-snug">
+              <li class="flex gap-2.5"><span class="font-mono text-text-muted shrink-0">01</span><span class="min-w-0">Аудит: как сайт, бот и CRM собирают данные клиентов</span></li>
+              <li class="flex gap-2.5"><span class="font-mono text-text-muted shrink-0">02</span><span class="min-w-0">Политика обработки персональных данных</span></li>
+              <li class="flex gap-2.5"><span class="font-mono text-text-muted shrink-0">03</span><span class="min-w-0">Согласия под ваши формы и рассылки</span></li>
+              <li class="flex gap-2.5"><span class="font-mono text-text-muted shrink-0">04</span><span class="min-w-0">Уведомление в Роскомнадзор</span></li>
+            </ul>
+            <div class="mt-4 bg-canvas rounded-[6px] px-3.5 py-3 text-[12.5px] leading-snug">
+              <span class="font-semibold">Зачем:</span> с 30.05.2025 за неподанное уведомление в РКН — штраф до 300&nbsp;000&nbsp;₽, за утечку базы клиентов — до 15&nbsp;млн&nbsp;₽.
+            </div>
+            <div class="mt-4 flex items-end justify-between gap-3">
+              <svg width="120" height="34" viewBox="0 0 120 34" aria-hidden="true" class="shrink-0">
+                <g fill="#111">
+                  <rect x="0" y="0" width="2" height="34"/><rect x="5" y="0" width="1" height="34"/><rect x="9" y="0" width="3" height="34"/><rect x="15" y="0" width="1" height="34"/><rect x="19" y="0" width="2" height="34"/><rect x="24" y="0" width="4" height="34"/><rect x="31" y="0" width="1" height="34"/><rect x="35" y="0" width="2" height="34"/><rect x="40" y="0" width="1" height="34"/><rect x="44" y="0" width="3" height="34"/><rect x="50" y="0" width="2" height="34"/><rect x="55" y="0" width="1" height="34"/><rect x="59" y="0" width="4" height="34"/><rect x="66" y="0" width="1" height="34"/><rect x="70" y="0" width="2" height="34"/><rect x="75" y="0" width="3" height="34"/><rect x="81" y="0" width="1" height="34"/><rect x="85" y="0" width="2" height="34"/><rect x="90" y="0" width="1" height="34"/><rect x="94" y="0" width="4" height="34"/><rect x="101" y="0" width="1" height="34"/><rect x="105" y="0" width="2" height="34"/><rect x="110" y="0" width="3" height="34"/><rect x="116" y="0" width="1" height="34"/><rect x="119" y="0" width="1" height="34"/>
+                </g>
+              </svg>
+              <span class="font-mono text-[10.5px] text-text-muted text-right">BEBRAND-152-50</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" onclick="handleCta(event)" data-cta="form" data-service="Регистрация ТЗ + бонус 152-ФЗ (−50%)" class="btn-press mt-5 w-full h-[56px] rounded-[6px] bg-primary text-white font-bold text-[16px]">Хочу регистрацию с бонусом</button>
+      </section>
+
+      <!-- 9. STORIES -->
+      <section id="stories" data-section-name="Истории-ситуации" class="pt-10 pb-8">
+        <div class="px-5">
+          <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-5">
+            <span>§ 07 / Как это бывает</span><span>5 историй</span>
+          </div>
+          <h2 class="font-display font-extrabold text-[30px] leading-[1.02] tracking-[-0.03em]">Так это <span class="text-primary">обычно</span> начинается</h2>
+        </div>
+        <div id="stories-row" class="mt-5 flex gap-4 overflow-x-auto no-scrollbar px-5 pb-2"></div>
+      </section>
+
+      <!-- 10. ЭКСПЕРТ -->
+      <section id="expert" data-section-name="Кто проверяет бренд" class="px-5 pb-10">
+        <div class="bg-surface border border-card-border rounded-[8px] overflow-hidden">
+          <div class="relative h-[260px] bg-ink">
+            <img data-replaceable-image="true" src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80" alt="Эксперт по интеллектуальной собственности BeBrand" class="absolute inset-0 w-full h-full object-cover object-top pointer-events-auto cursor-pointer select-none" draggable="false" onerror="this.style.opacity='0'" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none"></div>
+            <div class="absolute left-4 bottom-4 right-4 text-white pointer-events-none">
+              <div class="font-mono text-[10.5px] uppercase tracking-wider opacity-75">Кто проверяет ваш бренд</div>
+              <div class="font-display font-extrabold text-[23px] leading-tight tracking-[-0.02em]">Эксперт по интеллектуальной собственности</div>
+              <div class="text-[13px] opacity-85 mt-0.5">юрист BeBrand</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 divide-x divide-card-border">
+            <div class="px-3 py-4 min-w-0"><div class="font-mono font-semibold text-[24px] leading-none">24&nbsp;ч</div><div class="text-[11.5px] text-text-muted mt-1.5 leading-snug">срок отчёта по аудиту</div></div>
+            <div class="px-3 py-4 min-w-0"><div class="font-mono font-semibold text-[24px] leading-none">45</div><div class="text-[11.5px] text-text-muted mt-1.5 leading-snug">классов МКТУ в анализе</div></div>
+            <div class="px-3 py-4 min-w-0"><div class="font-mono font-semibold text-[24px] leading-none text-primary">0&nbsp;₽</div><div class="text-[11.5px] text-text-muted mt-1.5 leading-snug">аудит бренда</div></div>
+          </div>
+          <div class="px-4 py-4 border-t border-card-border text-[14px] leading-snug">
+            «Большинство узнаёт о проблеме из претензии. Наша задача — чтобы вы узнали раньше и спокойно приняли решение».
+          </div>
+        </div>
+      </section>
+
+      <!-- 11. FAQ -->
+      <section id="faq" data-section-name="Вопросы и гарантии" class="px-5 pb-10">
+        <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-2">
+          <span>§ 08 / Вопросы</span><span>Q.01–Q.06</span>
+        </div>
+        <div id="faq-list" class="divide-y divide-card-border"></div>
+      </section>
+
+      <!-- 12. ЛИД-ФОРМА -->
+      <section id="lead-form" data-section-name="Заявка на аудит бренда" class="px-5 pt-10 pb-10 bg-surface border-t border-ink">
+        <div class="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-text-muted border-b border-ink pb-2 mb-5">
+          <span>§ 09 / Заявка</span><span>0 ₽ · 24 ч</span>
+        </div>
+        <h2 class="font-display font-extrabold text-[32px] leading-[1.0] tracking-[-0.035em]">Бесплатный аудит <span class="text-primary">бренда</span></h2>
+        <p class="mt-2 text-[14px] text-text-muted leading-snug">Отчёт за 24 часа: свободно ли название, какие классы МКТУ нужны, смета госпошлин и стратегия регистрации.</p>
+
+        <div id="lead-context" class="hidden mt-5 bg-canvas border border-card-border rounded-[6px] px-3.5 py-3">
+          <div class="font-mono text-[10.5px] uppercase tracking-wider text-text-muted mb-1">Приложим к заявке</div>
+          <div id="lead-context-text" class="text-[13px] leading-snug break-words"></div>
+        </div>
+
+        <form id="lead-form-fields" class="mt-5 space-y-4" novalidate onsubmit="handleFormSubmit(event)">
+          <div>
+            <label for="f-name" class="block text-[13px] font-semibold mb-1.5">Имя</label>
+            <input id="f-name" class="field" type="text" autocomplete="given-name" placeholder="Как к вам обращаться" />
+            <p class="field-msg hidden text-[12px] text-primary mt-1">Укажите имя</p>
+          </div>
+          <div>
+            <label for="f-tg" class="block text-[13px] font-semibold mb-1.5">Ник в Telegram</label>
+            <input id="f-tg" class="field" type="text" autocomplete="off" autocapitalize="off" placeholder="@username" />
+            <p class="field-msg hidden text-[12px] text-primary mt-1">Укажите ник, чтобы юрист прислал отчёт</p>
+          </div>
+          <div>
+            <label for="f-brand" class="block text-[13px] font-semibold mb-1.5">Название бренда</label>
+            <input id="f-brand" class="field" type="text" autocomplete="off" placeholder="Как называется ваш бренд" />
+            <p class="field-msg hidden text-[12px] text-primary mt-1">Укажите название бренда</p>
+          </div>
+          <div>
+            <label for="f-sphere" class="block text-[13px] font-semibold mb-1.5">Сфера деятельности</label>
+            <textarea id="f-sphere" class="field min-h-[110px] resize-y" placeholder="Как можно подробнее: какие товары и услуги под этим брендом"></textarea>
+            <p class="field-msg hidden text-[12px] text-primary mt-1">Опишите товары или услуги — от этого зависят классы МКТУ</p>
+          </div>
+
+          <button id="submitBtn" type="submit" class="btn-press w-full h-[58px] rounded-[6px] bg-primary text-white font-bold text-[16px] disabled:opacity-60">Получить аудит бренда — 0 ₽</button>
+          <p class="text-[12px] text-text-muted leading-relaxed">
+            Нажимая кнопку, вы соглашаетесь с
+            <a href="https://disk.yandex.ru/d/CtILIrcyc4PZ9g" target="_blank" rel="noopener" onclick="handleCta(event)" data-notibot-action="openLink" data-url="https://disk.yandex.ru/d/CtILIrcyc4PZ9g" class="text-text-main font-semibold underline underline-offset-2 decoration-primary">политикой обработки персональных данных</a>
+            и даёте согласие на обработку данных для подготовки аудита.
+          </p>
+        </form>
+
+        <div id="formStatus" class="hidden mt-4 rounded-[6px] px-4 py-3 text-[14px]" role="status" aria-live="polite"></div>
+      </section>
+
+      <!-- 13. ФУТЕР -->
+      <section id="footer" data-section-name="Футер" class="px-5 pt-8 pb-32">
+        <img data-replaceable-image="true" src="data:image/png;base64,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" alt="BeBrand — Right to be brand" class="h-[40px] w-auto pointer-events-auto cursor-pointer select-none" draggable="false" />
+        <p class="mt-4 text-[12px] text-text-muted leading-relaxed">Регистрация товарных знаков и патентов · бесплатный аудит брендов · подбор классов МКТУ и расчёт госпошлин.</p>
+        <p class="mt-2 text-[11px] text-text-muted leading-relaxed">Суммы на странице — максимальные размеры ответственности по ст. 1515 ГК РФ (ред. с 06.01.2026) и КоАП РФ. Не является публичной офертой.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" onclick="handleCta(event)" data-notibot-action="openLink" data-url="https://t.me/BeBrand4msk" class="btn-press inline-flex items-center gap-2 h-[44px] px-4 rounded-[6px] border border-ink text-[14px] font-semibold">
+            <i data-lucide="send" class="w-4 h-4"></i> Написать юристу
+          </button>
+          <a href="https://disk.yandex.ru/d/CtILIrcyc4PZ9g" target="_blank" rel="noopener" onclick="handleCta(event)" data-notibot-action="openLink" data-url="https://disk.yandex.ru/d/CtILIrcyc4PZ9g" class="inline-flex items-center h-[44px] px-1 text-[13px] text-text-muted underline underline-offset-2">Политика ПДн</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- THUMB BAR (вне .screen: transform ломает position:fixed) -->
+  <div id="thumb-bar" class="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto translate-y-[120%]">
+    <div class="mx-3 mb-3 bg-ink text-white rounded-[8px] p-2 pl-4 flex items-center gap-3 shadow-[0_12px_30px_rgba(0,0,0,.35)]">
+      <div class="min-w-0 flex-1">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-white/50">Без товарного знака</div>
+        <div id="thumb-summary" class="text-[13px] font-semibold truncate">Аудит бренда · 0 ₽</div>
+      </div>
+      <button type="button" onclick="handleCta(event)" data-cta="form" data-service="Аудит бренда" class="btn-press h-[46px] px-4 rounded-[6px] bg-primary text-white font-bold text-[14px] shrink-0">Проверить — 0 ₽</button>
+    </div>
+  </div>
+
+  <!-- STORY MODAL (вне .screen) -->
+  <div id="story-modal" class="fixed inset-0 z-[80] hidden opacity-0" role="dialog" aria-modal="true" aria-label="История">
+    <div class="absolute inset-0 bg-black"></div>
+    <div class="relative max-w-md mx-auto h-full overflow-hidden">
+      <img id="story-img" src="" alt="" class="absolute inset-0 w-full h-full object-cover opacity-60" draggable="false" onerror="this.style.opacity='0'" />
+      <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/85 pointer-events-none"></div>
+      <div class="absolute top-0 left-0 right-0 z-20 px-3 pt-3">
+        <div id="story-bars" class="flex gap-1"></div>
+        <div class="flex items-center justify-between mt-3">
+          <span id="story-title" class="text-white font-semibold text-[14px]"></span>
+          <button type="button" onclick="closeStory()" aria-label="Закрыть" class="w-9 h-9 rounded-[6px] bg-white/15 text-white flex items-center justify-center"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+      <div class="absolute inset-0 z-10 flex">
+        <div class="w-[32%] h-full" onclick="prevSlide()"></div>
+        <div class="flex-1 h-full" onclick="nextSlide()"></div>
+      </div>
+      <div id="story-content" class="absolute left-0 right-0 bottom-0 z-20 px-5 pb-10 text-white pointer-events-none"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ================== КОНФИГ ================== */
+    var CTA_METHOD = 'scrollToForm';            // Выбрано: форма сбора лидов Notibot
+    var FORM_ID = '2kCcxhmDJCNa6oPYfBsP1r';
+    var REDIRECT_URL = 'https://t.me/BeBrand4msk';
+    var Q_NAME = 'Имя';
+    var Q_TG = 'Ник в телеграм';
+    var Q_BRAND = 'название бренда';
+    var Q_SPHERE = 'сфера деятельности (как можно подробнее какие товары, услуги под этим брендом)';
+    var COMPENSATION_MAX = 10000000;            // ст. 1515 ГК РФ, ред. с 06.01.2026
+    var IMG = function(id, w) { return 'https://images.unsplash.com/photo-' + id + '?auto=format&fit=crop&w=' + (w || 800) + '&q=80'; };
+
+    /* ================== УТИЛИТЫ ================== */
+    function $(id) { return document.getElementById(id); }
+    function refreshIcons() {
+      try { if (window.lucide && typeof window.lucide.createIcons === 'function') { window.lucide.createIcons(); } } catch (e) {}
+    }
+    function fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+    function rub(n) { return fmt(n) + ' ₽'; }
+    function rubCompact(n) {
+      if (n >= 1000000) { return (Math.round(n / 100000) / 10).toString().replace('.', ',') + ' млн ₽'; }
+      if (n >= 1000) { return Math.round(n / 1000) + ' тыс ₽'; }
+      return rub(n);
+    }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function safeHaptic(kind) {
+      try {
+        if (window.notibot) {
+          if (kind === 'success' || kind === 'error' || kind === 'warning') {
+            if (typeof notibot.hapticNotification === 'function') { notibot.hapticNotification(kind); return; }
+          } else if (kind === 'selection') {
+            if (typeof notibot.hapticSelection === 'function') { notibot.hapticSelection(); return; }
+          } else {
+            if (typeof notibot.hapticImpact === 'function') { notibot.hapticImpact(kind || 'light'); return; }
+          }
+        }
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+          var hf = Telegram.WebApp.HapticFeedback;
+          if ((kind === 'success' || kind === 'error' || kind === 'warning') && typeof hf.notificationOccurred === 'function') { hf.notificationOccurred(kind); return; }
+          if (kind === 'selection' && typeof hf.selectionChanged === 'function') { hf.selectionChanged(); return; }
+          if (typeof hf.impactOccurred === 'function') { hf.impactOccurred(kind === 'heavy' ? 'heavy' : (kind === 'medium' ? 'medium' : 'light')); return; }
+        }
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(kind === 'error' ? [30, 40, 30] : 12);
+        }
+      } catch (e) {}
+    }
+    function setScrollLock(locked) {
+      try { if (window.notibot && typeof window.notibot.setScrollLock === 'function') { window.notibot.setScrollLock(locked); } } catch (e) {}
+      document.body.style.overflow = locked ? 'hidden' : '';
+    }
+    function scrollToBlock(id) {
+      var el = $(id);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      safeHaptic('light');
+    }
+
+    /* ================== СОСТОЯНИЕ ЛИДА ================== */
+    var leadState = { interests: [], business: '', ipAnswers: {}, cost: null, calcTouched: false, brandFromSummons: '' };
+    function addInterest(service) {
+      if (!service) return;
+      if (leadState.interests.indexOf(service) === -1) { leadState.interests.push(service); }
+    }
+    function buildContextParts() {
+      var parts = [];
+      if (leadState.interests.length) { parts.push('Интерес: ' + leadState.interests.join(', ')); }
+      if (leadState.business) { parts.push('Тип бизнеса: ' + leadState.business); }
+      var ipKeys = Object.keys(leadState.ipAnswers);
+      if (ipKeys.length) {
+        parts.push('Экспресс-проверка: ' + ipKeys.map(function(k) { return k + ' — ' + leadState.ipAnswers[k]; }).join('; '));
+      }
+      if (leadState.calcTouched && leadState.cost) {
+        parts.push('Затраты без ТЗ по калькулятору: до ' + rub(leadState.cost.total).replace(/ /g, ' '));
+        if (leadState.cost.classes && leadState.cost.classes.length) { parts.push('Вероятные классы МКТУ: ' + leadState.cost.classes.join(', ')); }
+      }
+      return parts;
+    }
+    function updateLeadContextUI() {
+      var box = $('lead-context'), txt = $('lead-context-text');
+      if (!box || !txt) return;
+      var parts = buildContextParts();
+      if (parts.length) { txt.textContent = parts.join(' · '); box.classList.remove('hidden'); }
+      else { box.classList.add('hidden'); }
+    }
+
+    /* ================== CTA (Context-Aware) ================== */
+    function openExternalLink(url) {
+      try {
+        if (window.notibot && typeof window.notibot.openLink === 'function') { window.notibot.openLink(url); return; }
+      } catch (e) {}
+      try { var w = window.open(url, '_blank'); if (w) return; } catch (e2) {}
+      window.location.href = url;
+    }
+    function scrollToForm() {
+      var form = $('lead-form');
+      if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        form.classList.remove('form-flash');
+        setTimeout(function() { if (form) form.classList.add('form-flash'); }, 450);
+      }
+    }
+    function handleCta(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var el = e ? (e.currentTarget || e.target) : null;
+      if (el && el.closest && !el.hasAttribute('data-cta') && !el.hasAttribute('data-notibot-action')) {
+        var c = el.closest('[data-cta],[data-notibot-action]');
+        if (c) el = c;
+      }
+      safeHaptic('light');
+      var action = el ? el.getAttribute('data-notibot-action') : null;
+      var actId = el ? el.getAttribute('data-id') : null;
+      var actUrl = el ? el.getAttribute('data-url') : null;
+
+      if (el && el.closest && el.closest('#story-modal')) { closeStory(); }
+
+      // Персональное действие (в т.ч. назначенное автором в редакторе Notibot)
+      if (action && action !== CTA_METHOD) {
+        if (action === 'openLink' && actUrl) { openExternalLink(actUrl); return; }
+        if (window.notibot && typeof window.notibot[action] === 'function') {
+          try {
+            if (actId) { window.notibot[action](actId); }
+            else if (actUrl) { window.notibot[action](actUrl); }
+            else { window.notibot[action](); }
+            return;
+          } catch (err) {}
+        }
+      }
+
+      // Дефолт: форма сбора лидов
+      var service = el ? el.getAttribute('data-service') : null;
+      if (service) addInterest(service);
+      if (el && el.getAttribute('data-from-summons') === '1') {
+        var bf = $('f-brand');
+        if (bf && leadState.brandFromSummons && (!bf.value || bf.getAttribute('data-autofill') === '1')) {
+          bf.value = leadState.brandFromSummons;
+          bf.setAttribute('data-autofill', '1');
+        }
+      }
+      if (el && el.getAttribute('data-from-calc') === '1') { leadState.calcTouched = true; }
+      updateLeadContextUI();
+      scrollToForm();
+    }
+
+    /* ================== HERO ================== */
+    var TW = [
+      { pre: 'Название', word: 'точно ваше?' },
+      { pre: 'Домен оплачен.', word: 'А название?' },
+      { pre: 'Вывеску', word: 'придётся менять?' },
+      { pre: 'Латиница', word: 'на вывеске законна?' }
+    ];
+    var twI = 0, twC = 0, twDel = false;
+    function twTick() {
+      var preEl = $('tw-pre'), wordEl = $('tw-word');
+      if (!wordEl) return;
+      var item = TW[twI];
+      if (!twDel) {
+        twC++;
+        wordEl.textContent = item.word.slice(0, twC);
+        if (twC >= item.word.length) { twDel = true; setTimeout(twTick, 1800); return; }
+        setTimeout(twTick, 60);
+      } else {
+        twC--;
+        wordEl.textContent = item.word.slice(0, twC);
+        if (twC <= 0) {
+          twDel = false;
+          twI = (twI + 1) % TW.length;
+          if (preEl) preEl.textContent = TW[twI].pre;
+          setTimeout(twTick, 260);
+          return;
+        }
+        setTimeout(twTick, 28);
+      }
+    }
+    var parallaxTicking = false;
+    function applyParallax() {
+      parallaxTicking = false;
+      var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+      if (y > 900) return;
+      var wrap = $('hero-parallax-wrap'), floatEl = $('hero-float');
+      if (wrap) { wrap.style.transform = 'translate3d(0,' + (y * 0.48) + 'px,0) scale(' + (1 + y * 0.0003) + ')'; }
+      if (floatEl) { floatEl.style.transform = 'translate3d(0,' + (-y * 0.18) + 'px,0)'; }
+    }
+    function onScroll() {
+      if (!parallaxTicking) { parallaxTicking = true; window.requestAnimationFrame(applyParallax); }
+    }
+
+    /* ================== COUNT-UP / REVEAL / THUMB BAR ================== */
+    var summonsAutoRan = false;
+    function countUp(el, target, dur) {
+      var start = null;
+      function step(ts) {
+        if (!start) start = ts;
+        var p = Math.min((ts - start) / dur, 1);
+        el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) window.requestAnimationFrame(step);
+      }
+      window.requestAnimationFrame(step);
+    }
+    function initObservers() {
+      var counters = document.querySelectorAll('[data-countup]');
+      var reveals = document.querySelectorAll('.reveal');
+      if (!('IntersectionObserver' in window)) {
+        for (var i = 0; i < counters.length; i++) { counters[i].textContent = fmt(parseInt(counters[i].getAttribute('data-countup'), 10)); }
+        for (var j = 0; j < reveals.length; j++) { reveals[j].classList.add('in'); }
+        var bar0 = $('thumb-bar'); if (bar0) bar0.style.transform = 'translateY(0)';
+        return;
+      }
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(en) {
+          if (en.isIntersecting) {
+            var t = en.target;
+            if (t.hasAttribute('data-countup') && !t.getAttribute('data-done')) {
+              t.setAttribute('data-done', '1');
+              countUp(t, parseInt(t.getAttribute('data-countup'), 10), 1600);
+            }
+            if (t.classList.contains('reveal')) { t.classList.add('in'); }
+            io.unobserve(t);
+          }
+        });
+      }, { threshold: 0.3 });
+      for (var a = 0; a < counters.length; a++) io.observe(counters[a]);
+      for (var b = 0; b < reveals.length; b++) io.observe(reveals[b]);
+
+      var summons = $('summons');
+      if (summons) {
+        var io2 = new IntersectionObserver(function(entries) {
+          entries.forEach(function(en) {
+            if (en.isIntersecting && !summonsAutoRan) { summonsAutoRan = true; runSummons(false); io2.disconnect(); }
+          });
+        }, { threshold: 0.35 });
+        io2.observe(summons);
+      }
+
+      var hero = $('hero'), form = $('lead-form');
+      var heroOut = false, formIn = false;
+      function syncBar() {
+        var bar = $('thumb-bar');
+        if (!bar) return;
+        bar.style.transform = (heroOut && !formIn) ? 'translateY(0)' : 'translateY(120%)';
+      }
+      if (hero) { new IntersectionObserver(function(en) { en.forEach(function(x) { heroOut = !x.isIntersecting; syncBar(); }); }, { threshold: 0 }).observe(hero); }
+      if (form) { new IntersectionObserver(function(en) { en.forEach(function(x) { formIn = x.isIntersecting; syncBar(); }); }, { threshold: 0.15 }).observe(form); }
+    }
+
+    /* ================== ШКАЛА МКТУ ================== */
+    var MKTU_NAMES = { 3: 'косметика', 9: 'ПО и приложения', 20: 'мебель', 21: 'посуда', 25: 'одежда и обувь', 29: 'продукты', 30: 'кофе, выпечка', 32: 'напитки', 35: 'реклама и торговля', 41: 'обучение', 42: 'IT-разработка', 43: 'кафе и рестораны', 44: 'красота и здоровье' };
+    function buildMktu() {
+      var scale = $('mktu-scale');
+      if (!scale) return;
+      var html = '';
+      for (var i = 1; i <= 45; i++) { html += '<div class="mktu-tick' + (i % 5 === 0 || i === 1 ? ' major' : '') + '" data-cls="' + i + '" title="Класс ' + i + '"></div>'; }
+      scale.innerHTML = html;
+    }
+    function highlightMktu(classes) {
+      var ticks = document.querySelectorAll('.mktu-tick');
+      for (var i = 0; i < ticks.length; i++) {
+        var c = parseInt(ticks[i].getAttribute('data-cls'), 10);
+        if (classes.indexOf(c) !== -1) ticks[i].classList.add('on'); else ticks[i].classList.remove('on');
+      }
+      var cnt = $('mktu-count');
+      if (cnt) cnt.textContent = (classes.length ? classes.length : '—') + ' / 45';
+      var label = $('mktu-label');
+      if (label) {
+        if (classes.length) {
+          var names = classes.map(function(c) { return '№' + c + (MKTU_NAMES[c] ? ' — ' + MKTU_NAMES[c] : ''); });
+          label.innerHTML = '<span class="text-secondary font-semibold">Вероятные классы:</span> ' + names.join(' · ') + '. Точный перечень — в аудите.';
+        } else {
+          label.textContent = 'Выберите тип бизнеса ниже — подсветим вероятные классы для вашего знака.';
+        }
+      }
+    }
+
+    /* ================== ПОВЕСТКА ================== */
+    var summonsToken = 0;
+    function getSummonsBrand() {
+      var inp = $('summons-input');
+      var v = inp ? inp.value.replace(/\s+/g, ' ').trim() : '';
+      return v || 'Ваш бренд';
+    }
+    function runSummons(manual) {
+      var token = ++summonsToken;
+      var brand = getSummonsBrand();
+      if (brand !== 'Ваш бренд') { leadState.brandFromSummons = brand; }
+      if (manual) safeHaptic('medium');
+      var to = $('summons-to'), textEl = $('summons-text'), cursor = $('summons-cursor');
+      var reveal = $('summons-reveal'), btnLabel = $('summons-btn-label');
+      var path = $('summons-strike-path'), svg = $('summons-strike'), paper = $('summons-paper');
+      var dateEl = $('summons-date');
+      if (dateEl) {
+        var d = new Date();
+        dateEl.textContent = ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear();
+      }
+      if (to) to.textContent = '«' + brand + '»';
+      if (btnLabel) btnLabel.textContent = 'Проверить «' + brand + '»';
+      if (reveal) reveal.classList.remove('show');
+      if (cursor) cursor.style.display = 'inline-block';
+      if (path) { path.style.transition = 'none'; path.setAttribute('d', 'M0 0'); }
+      if (textEl) textEl.textContent = '';
+
+      var full = 'Требуем прекратить использование обозначения „' + brand + '“ — на вывеске, в домене, на упаковке и в карточках товаров — и выплатить компенсацию 10 000 000 ₽ (ст. 1515 ГК РФ).';
+      var i = 0;
+      function typeStep() {
+        if (token !== summonsToken) return;
+        i += 2;
+        if (textEl) textEl.textContent = full.slice(0, i);
+        if (i < full.length) { setTimeout(typeStep, 20); return; }
+        if (cursor) cursor.style.display = 'none';
+        setTimeout(function() { if (token === summonsToken) strike(); }, 450);
+      }
+      function strike() {
+        if (!paper || !svg || !path) { showReveal(); return; }
+        var w = paper.offsetWidth, h = paper.offsetHeight;
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        path.setAttribute('d', 'M 14 ' + Math.round(h * 0.22) + ' L ' + (w - 14) + ' ' + Math.round(h * 0.82));
+        var len = 0;
+        try { len = path.getTotalLength(); } catch (e) { len = Math.sqrt(w * w + h * h); }
+        path.style.transition = 'none';
+        path.style.strokeDasharray = len;
+        path.style.strokeDashoffset = len;
+        path.getBoundingClientRect();
+        path.style.transition = 'stroke-dashoffset .6s cubic-bezier(.6,0,.2,1)';
+        path.style.strokeDashoffset = '0';
+        safeHaptic('heavy');
+        setTimeout(function() { if (token === summonsToken) showReveal(); }, 650);
+      }
+      function showReveal() { if (reveal) reveal.classList.add('show'); }
+      typeStep();
+    }
+
+    /* ================== ЭКСПРЕСС-ПРОВЕРКА: ЧТО МОЖНО ЗАЩИТИТЬ ================== */
+    var IP_TYPES = [
+      { key: 'maker',   chip: 'Производитель',     img: IMG('1556228578-8c89e6adf883'),
+        q: 'Этикетки и упаковка зарегистрированы?',
+        risk: 'По претензии правообладателя тираж с чужим обозначением изымают и уничтожают, а сети не берут товар без свидетельства.',
+        fix: 'Товарный знак на название и этикетку — словесный или комбинированный.', service: 'Регистрация ТЗ: этикетка и упаковка' },
+      { key: 'offline', chip: 'Офлайн-точка',      img: IMG('1554118811-1e0d58224f24'),
+        q: 'Латиница на вывеске зарегистрирована как знак?',
+        risk: 'С 01.03.2026 иностранные слова на вывеске допустимы с переводом — или если это зарегистрированный товарный знак.',
+        fix: 'Регистрация знака — и латиница на вывеске законна без перевода.', service: 'Регистрация ТЗ: вывеска' },
+      { key: 'online',  chip: 'Онлайн-сервис',     img: IMG('1512941937669-90a1b58e7e9c'),
+        q: 'Мобильное приложение и домен защищены?',
+        risk: 'Название совпало с чужим знаком — претензия к приложению в сторе и спор о домене: сайт, почта и реклама встают.',
+        fix: 'Товарный знак в классах 9 и 42 + проверка домена на совпадения.', service: 'Регистрация ТЗ: приложение и домен' },
+      { key: 'expert',  chip: 'Сервис или эксперт', img: IMG('1573496359142-b8d87734a5a2'),
+        q: 'Клиентская база защищена?',
+        risk: 'Собираете контакты через сайт, бот или CRM без политики и уведомления РКН — штраф до 300 000 ₽.',
+        fix: 'Документы по 152-ФЗ — бонусом за полцены при регистрации товарного знака.', service: 'Регистрация ТЗ + бонус 152-ФЗ (−50%)', bonus: true },
+      { key: 'design',  chip: 'Дизайн продукта',   img: IMG('1581091226825-a6a2a5aee158'),
+        q: 'Дизайн продукта защищён?',
+        risk: 'Форму изделия, упаковку или узор можно повторить. Без патента доказать права почти невозможно.',
+        fix: 'Патент на промышленный образец.', service: 'Патент на промышленный образец' }
+    ];
+    var ipCurrent = 0;
+    function buildIpChips() {
+      var wrap = $('ip-chips');
+      if (!wrap) return;
+      var html = '';
+      IP_TYPES.forEach(function(t, i) {
+        html += '<button type="button" class="chip shrink-0 h-[38px] px-3.5 rounded-[6px] border border-card-border bg-surface text-[13.5px] font-semibold' + (i === 0 ? ' active' : '') + '" data-ip="' + i + '" onclick="selectIp(' + i + ')">' + t.chip + '</button>';
+      });
+      wrap.innerHTML = html;
+      renderIp();
+    }
+    function selectIp(i) {
+      ipCurrent = i;
+      safeHaptic('selection');
+      var chips = document.querySelectorAll('#ip-chips .chip');
+      for (var k = 0; k < chips.length; k++) {
+        if (parseInt(chips[k].getAttribute('data-ip'), 10) === i) chips[k].classList.add('active'); else chips[k].classList.remove('active');
+      }
+      renderIp();
+    }
+    function renderIp() {
+      var t = IP_TYPES[ipCurrent], panel = $('ip-panel');
+      if (!t || !panel) return;
+      var ans = leadState.ipAnswers[t.q] || '';
+      var html = '<div class="ip-panel">' +
+        '<div class="relative h-[150px] bg-ink">' +
+          '<img data-replaceable-image="true" src="' + t.img + '" alt="' + esc(t.chip) + '" class="absolute inset-0 w-full h-full object-cover pointer-events-auto cursor-pointer select-none" draggable="false" onerror="this.style.opacity=\'0\'" />' +
+          '<div class="absolute inset-0 bg-gradient-to-t from-black/85 to-black/10 pointer-events-none"></div>' +
+          '<div class="absolute left-4 right-4 bottom-3 text-white pointer-events-none"><div class="font-mono text-[10.5px] uppercase tracking-wider opacity-70">' + esc(t.chip) + '</div>' +
+          '<div class="font-display font-extrabold text-[22px] leading-[1.08] tracking-[-0.02em]">' + esc(t.q) + '</div></div>' +
+        '</div>' +
+        '<div class="px-4 pt-4 pb-4">' +
+          '<div class="grid grid-cols-3 gap-2">' +
+            '<button type="button" class="ans-btn h-[42px] rounded-[6px] border border-card-border text-[13.5px] font-semibold' + (ans === 'да' ? ' sel-yes' : '') + '" onclick="answerIp(\'да\')">Да</button>' +
+            '<button type="button" class="ans-btn h-[42px] rounded-[6px] border border-card-border text-[13.5px] font-semibold' + (ans === 'нет' ? ' sel-no' : '') + '" onclick="answerIp(\'нет\')">Нет</button>' +
+            '<button type="button" class="ans-btn h-[42px] rounded-[6px] border border-card-border text-[13.5px] font-semibold' + (ans === 'не знаю' ? ' sel-idk' : '') + '" onclick="answerIp(\'не знаю\')">Не знаю</button>' +
+          '</div>' +
+          '<div id="ip-result" class="mt-4' + (ans ? '' : ' hidden') + '">' + ipResultHtml(t, ans) + '</div>' +
+        '</div></div>';
+      panel.innerHTML = html;
+      refreshIcons();
+    }
+    function ipResultHtml(t, ans) {
+      if (!ans) return '';
+      var head = ans === 'да'
+        ? '<div class="text-[14px] font-semibold text-secondary mb-2">Отлично. Проверим, что защита покрывает все ваши товары и услуги.</div>'
+        : '<div class="text-[14px] font-semibold text-primary mb-2">' + (ans === 'нет' ? 'Это зона риска.' : 'Значит, стоит проверить.') + '</div>';
+      return head +
+        '<div class="text-[13.5px] leading-snug"><span class="font-mono text-[11px] uppercase tracking-wider text-text-muted block mb-1">Чем грозит</span>' + esc(t.risk) + '</div>' +
+        '<div class="text-[13.5px] leading-snug mt-3"><span class="font-mono text-[11px] uppercase tracking-wider text-text-muted block mb-1">Что защищает' + (t.bonus ? ' · бонус' : '') + '</span>' + esc(t.fix) + '</div>' +
+        '<button type="button" onclick="handleCta(event)" data-cta="form" data-service="' + esc(t.service) + '" class="btn-press mt-4 w-full h-[52px] rounded-[6px] bg-primary text-white font-bold text-[15px]">' + (t.bonus ? 'Хочу регистрацию с бонусом' : 'Проверить бесплатно') + '</button>';
+    }
+    function answerIp(ans) {
+      var t = IP_TYPES[ipCurrent];
+      if (!t) return;
+      leadState.ipAnswers[t.q] = ans;
+      safeHaptic(ans === 'да' ? 'success' : 'warning');
+      renderIp();
+      updateLeadContextUI();
+    }
+
+    /* ================== КАЛЬКУЛЯТОР ЗАТРАТ ================== */
+    var BUSINESS = [
+      { key: 'market',  icon: 'shopping-bag',   title: 'Маркетплейс',       sub: 'карточки, упаковка, реклама',  sign: 0,      pack: 300000, site: 50000,  ads: 400000, revenue: 1500000, months: 1, classes: [25, 35] },
+      { key: 'offline', icon: 'store',          title: 'Офлайн-точка',      sub: 'кафе, салон, магазин',         sign: 350000, pack: 80000,  site: 50000,  ads: 150000, revenue: 1000000, months: 1, classes: [35, 43] },
+      { key: 'maker',   icon: 'factory',        title: 'Производитель',     sub: 'этикетки, тиражи, сети',       sign: 0,      pack: 800000, site: 100000, ads: 300000, revenue: 3000000, months: 2, classes: [29, 30, 35] },
+      { key: 'online',  icon: 'smartphone',     title: 'Онлайн-сервис',     sub: 'сайт, приложение, домен',      sign: 0,      pack: 0,      site: 600000, ads: 500000, revenue: 2000000, months: 1, classes: [9, 42] },
+      { key: 'expert',  icon: 'graduation-cap', title: 'Эксперт или школа', sub: 'курсы, блог, консультации',    sign: 0,      pack: 0,      site: 150000, ads: 300000, revenue: 600000,  months: 1, classes: [35, 41] },
+      { key: 'design',  icon: 'pen-tool',       title: 'Дизайн-продукт',    sub: 'мебель, посуда, аксессуары',   sign: 0,      pack: 250000, site: 100000, ads: 200000, revenue: 800000,  months: 2, classes: [20, 21, 35] }
+    ];
+    var currentBiz = null;
+    var animVals = {};
+    function buildBusiness() {
+      var grid = $('sit-grid');
+      if (!grid) return;
+      var html = '';
+      BUSINESS.forEach(function(s) {
+        html += '<button type="button" class="sit-card text-left bg-canvas border border-card-border rounded-[8px] p-3 min-w-0" data-sit="' + s.key + '" onclick="selectBusiness(\'' + s.key + '\')">' +
+                  '<i data-lucide="' + s.icon + '" class="sit-icon w-5 h-5 mb-2"></i>' +
+                  '<div class="text-[13.5px] font-bold leading-tight break-words">' + s.title + '</div>' +
+                  '<div class="sit-sub text-[11.5px] text-text-muted mt-1 leading-snug break-words">' + s.sub + '</div>' +
+                '</button>';
+      });
+      grid.innerHTML = html;
+    }
+    function updateFill(r) {
+      var min = parseFloat(r.min), max = parseFloat(r.max), v = parseFloat(r.value);
+      r.style.setProperty('--fill', (((v - min) / (max - min)) * 100) + '%');
+    }
+    function setSlider(id, val) { var r = $(id); if (r) { r.value = val; updateFill(r); } }
+    function sliderVal(id) { var r = $(id); return r ? parseFloat(r.value) : 0; }
+    function selectBusiness(key) {
+      var s = null;
+      for (var i = 0; i < BUSINESS.length; i++) { if (BUSINESS[i].key === key) s = BUSINESS[i]; }
+      if (!s) return;
+      currentBiz = s;
+      safeHaptic('selection');
+      var cards = document.querySelectorAll('.sit-card');
+      for (var j = 0; j < cards.length; j++) {
+        if (cards[j].getAttribute('data-sit') === key) cards[j].classList.add('active'); else cards[j].classList.remove('active');
+      }
+      setSlider('rng-sign', s.sign); setSlider('rng-pack', s.pack); setSlider('rng-site', s.site);
+      setSlider('rng-ads', s.ads); setSlider('rng-revenue', s.revenue); setSlider('rng-months', s.months);
+      leadState.business = s.title;
+      leadState.calcTouched = true;
+      highlightMktu(s.classes);
+      recalc();
+    }
+    function onSlider(r) { updateFill(r); leadState.calcTouched = true; recalc(); }
+    function toggleSwitch(btn) {
+      if (!btn) return;
+      btn.setAttribute('aria-checked', btn.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+      safeHaptic('selection');
+      leadState.calcTouched = true;
+      recalc();
+    }
+    function isOn(id) { var b = $(id); return b ? b.getAttribute('aria-checked') === 'true' : false; }
+    function animateNumber(el, key, target) {
+      if (!el) return;
+      var from = animVals[key] || 0;
+      animVals[key] = target;
+      var start = null, dur = 550;
+      function step(ts) {
+        if (!start) start = ts;
+        var p = Math.min((ts - start) / dur, 1);
+        el.textContent = rub(from + (target - from) * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) window.requestAnimationFrame(step);
+      }
+      window.requestAnimationFrame(step);
+    }
+    function monthsLabel(m) {
+      if (m === 0) return 'нет';
+      if (m === 1) return '1 месяц';
+      if (m >= 2 && m <= 4) return m + ' месяца';
+      return m + ' месяцев';
+    }
+    function buildCostLines() {
+      var wrap = $('cost-lines');
+      if (!wrap) return;
+      var rows = [
+        ['comp', 'Компенсация правообладателю'],
+        ['sales', 'Простой продаж'],
+        ['pack', 'Упаковка и этикетки заново'],
+        ['ads', 'Продвижение с нуля'],
+        ['site', 'Сайт, домен, приложение'],
+        ['sign', 'Новая вывеска и оформление']
+      ];
+      var html = '';
+      rows.forEach(function(r) {
+        html += '<div class="cost-line py-2.5 border-t border-card-border first:border-t-0" id="cl-' + r[0] + '">' +
+                  '<div class="flex items-baseline justify-between gap-3"><span class="min-w-0">' + r[1] + '</span><span class="cost-val font-semibold tnum shrink-0" id="cv-' + r[0] + '">0 ₽</span></div>' +
+                  '<div class="mt-1.5 h-[4px] bg-canvas rounded-[2px] overflow-hidden"><div class="cost-bar" id="cb-' + r[0] + '" style="width:0"></div></div>' +
+                '</div>';
+      });
+      wrap.innerHTML = html;
+    }
+    function recalc() {
+      var sign = sliderVal('rng-sign'), pack = sliderVal('rng-pack'), site = sliderVal('rng-site');
+      var ads = sliderVal('rng-ads'), revenue = sliderVal('rng-revenue'), months = sliderVal('rng-months');
+      var compOn = isOn('tg-comp');
+
+      var labels = { 'v-sign': rub(sign), 'v-pack': rub(pack), 'v-site': rub(site), 'v-ads': rub(ads), 'v-revenue': rub(revenue), 'v-months': monthsLabel(months) };
+      Object.keys(labels).forEach(function(k) { var el = $(k); if (el) el.textContent = labels[k]; });
+
+      var vals = { comp: compOn ? COMPENSATION_MAX : 0, sales: revenue * months, pack: pack, ads: ads, site: site, sign: sign };
+      var total = 0, max = 1;
+      Object.keys(vals).forEach(function(k) { total += vals[k]; if (vals[k] > max) max = vals[k]; });
+      Object.keys(vals).forEach(function(k) {
+        animateNumber($('cv-' + k), 'cv-' + k, vals[k]);
+        var bar = $('cb-' + k);
+        if (bar) bar.style.width = Math.max(vals[k] > 0 ? 2 : 0, (vals[k] / max) * 100) + '%';
+        var line = $('cl-' + k);
+        if (line) { if (vals[k] === 0) line.classList.add('is-zero'); else line.classList.remove('is-zero'); }
+      });
+      animateNumber($('r-total'), 'r-total', total);
+
+      leadState.cost = { total: total, classes: currentBiz ? currentBiz.classes : [] };
+      var ts = $('thumb-summary');
+      if (ts) ts.textContent = leadState.calcTouched ? ('Затраты — до ' + rubCompact(total)) : 'Аудит бренда · 0 ₽';
+      updateLeadContextUI();
+    }
+
+    /* ================== 3D FLIP: УГРОЗА → ЗАЩИТА ================== */
+    var CARDS = [
+      { n: '01', threat: '«Название точно ваше?»', img: IMG('1450101499163-c8848c66ca85'),
+        title: 'Аудит бренда — <span class="text-secondary">0&nbsp;₽</span>',
+        items: ['Поиск по базам Роспатента: тождество и сходство', 'Подбор классов МКТУ под ваши товары и услуги', 'Смета госпошлин и стратегия регистрации'],
+        note: 'Отчёт за 24 часа', btn: 'Проверить название', service: 'Аудит бренда' },
+      { n: '02', threat: '«Доменом дорожите? Его могут заблокировать»', img: IMG('1555949963-ff9fe0c870eb'),
+        title: 'Знак — ваш аргумент в споре о домене',
+        items: ['Проверим домен на совпадение с чужими знаками', 'Зарегистрируем знак в классах ваших услуг', 'Подготовим позицию на случай претензии'],
+        note: 'Домен без знака — не защита названия', btn: 'Защитить домен и название', service: 'Регистрация ТЗ: домен' },
+      { n: '03', threat: '«Претензия: переименоваться и снять товар»', img: IMG('1589829545856-d10d557cf95f'),
+        title: 'Регистрация товарного знака под ключ',
+        items: ['Заявка и перечень товаров и услуг', 'Ответы на запросы экспертизы Роспатента', 'Свидетельство на 10 лет с правом продления'],
+        note: 'Приоритет — с даты подачи заявки', btn: 'Начать с бесплатного аудита', service: 'Регистрация товарного знака' },
+      { n: '04', threat: '«Вывеска на латинице? Придётся менять»', img: IMG('1441986300917-64674bd600d8'),
+        title: 'Латиница законна, если это ваш знак',
+        items: ['С 01.03.2026 иностранные слова — с переводом или как товарный знак', 'Проверим, можно ли зарегистрировать ваше название', 'Сохраните вывеску без переделки'],
+        note: 'Закон № 168-ФЗ о русском языке', btn: 'Проверить вывеску', service: 'Регистрация ТЗ: вывеска на латинице' },
+      { n: '05', threat: '«Ваш дизайн повторили конкуренты»', img: IMG('1581091226825-a6a2a5aee158'),
+        title: 'Патент на промышленный образец',
+        items: ['Оценим новизну внешнего вида изделия', 'Подготовим изображения и описание', 'Сопроводим до выдачи патента'],
+        note: 'Форма, упаковка, узор, интерфейс', btn: 'Обсудить патент', service: 'Патент на промышленный образец' }
+    ];
+    function buildFlipCards() {
+      var slider = $('flip-slider');
+      if (!slider) return;
+      var html = '';
+      CARDS.forEach(function(c) {
+        var items = c.items.map(function(t) { return '<li class="flex gap-2.5"><span class="font-mono text-text-muted shrink-0">—</span><span class="min-w-0">' + t + '</span></li>'; }).join('');
+        html += '<div class="flip-card w-[82vw] max-w-[330px] h-[430px] shrink-0 snap-center cursor-pointer" onclick="toggleCardFlip(this, event)">' +
+          '<div class="flip-card-inner">' +
+            '<div class="flip-card-front">' +
+              '<img data-replaceable-image="true" src="' + c.img + '" alt="" class="absolute inset-0 w-full h-full object-cover pointer-events-auto cursor-pointer select-none" draggable="false" onerror="this.style.opacity=\'0\'" />' +
+              '<div class="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10 pointer-events-none"></div>' +
+              '<div class="relative h-full flex flex-col justify-between p-5 text-white pointer-events-none">' +
+                '<div class="flex justify-between font-mono text-[11px] uppercase tracking-wider"><span class="bg-primary px-2 py-1 rounded-[4px]">Угроза</span><span class="opacity-70">' + c.n + ' / 0' + CARDS.length + '</span></div>' +
+                '<div><div class="font-mono font-semibold text-[64px] leading-none text-[#E25A5C]">' + c.n + '</div>' +
+                '<div class="font-display font-extrabold text-[28px] leading-[1.04] tracking-[-0.03em] mt-2 break-words">' + c.threat + '</div>' +
+                '<div class="mt-4 font-mono text-[11px] uppercase tracking-wider opacity-70">Перевернуть ↻</div></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flip-card-back flex flex-col p-5">' +
+              '<div class="flex justify-between font-mono text-[11px] uppercase tracking-wider"><span class="bg-secondary text-white px-2 py-1 rounded-[4px]">Защита</span><span class="text-text-muted">' + c.n + ' / 0' + CARDS.length + '</span></div>' +
+              '<div class="font-display font-extrabold text-[25px] leading-[1.06] tracking-[-0.03em] mt-4 break-words">' + c.title + '</div>' +
+              '<ul class="mt-4 space-y-2.5 text-[14px] leading-snug">' + items + '</ul>' +
+              '<div class="mt-auto"><div class="font-mono text-[12px] text-text-muted border-t border-card-border pt-3 mb-3">' + c.note + '</div>' +
+              '<button type="button" onclick="handleCta(event)" data-cta="form" data-service="' + esc(c.service) + '" class="btn-press w-full h-[52px] rounded-[6px] bg-primary text-white font-bold text-[15px]">' + c.btn + '</button></div>' +
+            '</div>' +
+          '</div></div>';
+      });
+      slider.innerHTML = html;
+    }
+    function toggleCardFlip(card, event) {
+      if (event && event.target && event.target.closest && event.target.closest('button, a, input, select, textarea, [data-notibot-action]')) return;
+      if (!card) return;
+      var inner = card.querySelector('.flip-card-inner');
+      if (inner) { inner.classList.toggle('is-flipped'); safeHaptic('light'); }
+    }
+    function initFlipDots() {
+      var slider = $('flip-slider'), dots = $('flip-dots');
+      if (!slider || !dots) return;
+      var cards = slider.querySelectorAll('.flip-card');
+      var html = '';
+      for (var i = 0; i < cards.length; i++) { html += '<span class="h-1.5 rounded-full transition-all duration-300 ' + (i === 0 ? 'w-6 bg-ink' : 'w-1.5 bg-card-border') + '"></span>'; }
+      dots.innerHTML = html;
+      slider.addEventListener('scroll', function() {
+        var first = cards[0];
+        if (!first) return;
+        var idx = Math.round(slider.scrollLeft / (first.offsetWidth + 14));
+        var spans = dots.children;
+        for (var k = 0; k < spans.length; k++) { spans[k].className = 'h-1.5 rounded-full transition-all duration-300 ' + (k === idx ? 'w-6 bg-ink' : 'w-1.5 bg-card-border'); }
+      }, { passive: true });
+    }
+
+    /* ================== STORIES ================== */
+    var STORIES = [
+      { label: 'Клоны на WB', img: IMG('1586528116311-ad8dd3c8310d', 600),
+        slides: [
+          { k: 'Сцена', t: 'Карточка вышла в топ. Через неделю — пять клонов с вашим названием и фото.' },
+          { k: 'Последствие', big: '«Подтвердите права на бренд»', t: 'Так отвечает поддержка. Без свидетельства или заявки защитить карточку нечем.' },
+          { k: 'Выход', t: 'Проверьте, свободно ли название, — за 24 часа и бесплатно.', cta: true }
+        ] },
+      { label: 'Письмо про вывеску', img: IMG('1554118811-1e0d58224f24', 600),
+        slides: [
+          { k: 'Сцена', t: 'Вывеска за 180 000 ₽. Через полгода — письмо: «Прекратите использовать наше название».' },
+          { k: 'Последствие', big: 'до 10 000 000 ₽', t: 'компенсации — плюс новая вывеска, меню, стаканы и аккаунты.' },
+          { k: 'Выход', t: 'Узнайте до печати, а не после. Аудит бренда — 0 ₽.', cta: true }
+        ] },
+      { label: 'Домен под запретом', img: IMG('1555949963-ff9fe0c870eb', 600),
+        slides: [
+          { k: 'Сцена', t: 'Домен оплачен на годы вперёд, сайт в топе. Пришла претензия: название — чужой товарный знак.' },
+          { k: 'Последствие', big: 'Запрет на домен', t: 'Суд может запретить использовать доменное имя — сайт, почта и реклама встают.' },
+          { k: 'Выход', t: 'Проверьте название до того, как вложитесь в домен и рекламу.', cta: true }
+        ] },
+      { label: 'Латиница на вывеске', img: IMG('1441986300917-64674bd600d8', 600),
+        slides: [
+          { k: 'Сцена', t: 'Красивое английское название на вывеске. С 1 марта 2026 — новые требования к иностранным словам.' },
+          { k: 'Последствие', big: 'Перевод или знак', t: 'Без перевода латиница допустима, только если это зарегистрированный товарный знак.' },
+          { k: 'Выход', t: 'Проверим, можно ли зарегистрировать ваше название, — бесплатно.', cta: true }
+        ] },
+      { label: 'Бывший партнёр', img: IMG('1573496359142-b8d87734a5a2', 600),
+        slides: [
+          { k: 'Сцена', t: 'Бренд придумали вместе. Партнёр ушёл — и зарегистрировал название на себя.' },
+          { k: 'Последствие', big: 'Нарушитель — вы', t: 'Теперь он требует отчислений за ваш же бренд.' },
+          { k: 'Выход', t: 'Кто подал заявку первым, тот и владеет. Проверьте название сегодня.', cta: true }
+        ] }
+    ];
+    var st = { i: 0, s: 0, timer: null };
+    var STORY_MS = 4800;
+    function buildStories() {
+      var row = $('stories-row');
+      if (!row) return;
+      var html = '';
+      STORIES.forEach(function(s, idx) {
+        html += '<button type="button" class="shrink-0 w-[76px] flex flex-col items-center gap-2 btn-press" onclick="openStory(' + idx + ')">' +
+                  '<span class="story-ring block" id="story-ring-' + idx + '"><span class="block w-[66px] h-[66px] rounded-full overflow-hidden border-2 border-canvas bg-ink">' +
+                    '<img data-replaceable-image="true" data-story-img="' + idx + '" src="' + s.img + '" alt="' + s.label + '" class="w-full h-full object-cover pointer-events-auto cursor-pointer select-none" draggable="false" onerror="this.style.opacity=\'0\'" />' +
+                  '</span></span>' +
+                  '<span class="text-[11.5px] font-semibold leading-tight text-center break-words w-full">' + s.label + '</span>' +
+                '</button>';
+      });
+      row.innerHTML = html;
+    }
+    function openStory(idx) {
+      var m = $('story-modal');
+      if (!m) return;
+      st.i = idx; st.s = 0;
+      m.classList.remove('hidden');
+      setTimeout(function() { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); }, 10);
+      setScrollLock(true);
+      safeHaptic('light');
+      renderStory();
+    }
+    function closeStory() {
+      var m = $('story-modal');
+      if (!m || m.classList.contains('hidden')) return;
+      clearTimeout(st.timer);
+      m.classList.remove('opacity-100'); m.classList.add('opacity-0');
+      setTimeout(function() { m.classList.add('hidden'); }, 250);
+      setScrollLock(false);
+    }
+    function renderStory() {
+      var s = STORIES[st.i];
+      if (!s) return;
+      var ring = $('story-ring-' + st.i);
+      if (ring) ring.classList.add('seen');
+      var img = $('story-img');
+      var srcEl = document.querySelector('[data-story-img="' + st.i + '"]');
+      if (img) { img.style.opacity = '0.6'; img.src = srcEl ? srcEl.src : s.img; }
+      var title = $('story-title');
+      if (title) title.textContent = s.label;
+      var bars = $('story-bars');
+      if (bars) {
+        var bh = '';
+        for (var b = 0; b < s.slides.length; b++) { bh += '<div class="story-bar"><span style="width:' + (b < st.s ? '100%' : '0') + '"></span></div>'; }
+        bars.innerHTML = bh;
+      }
+      var sl = s.slides[st.s];
+      var c = $('story-content');
+      if (c && sl) {
+        var html = '<div class="font-mono text-[11px] uppercase tracking-wider text-white/60 mb-3">' + (st.s + 1) + ' / ' + s.slides.length + ' · ' + sl.k + '</div>';
+        if (sl.big) html += '<div class="font-display font-extrabold text-[36px] leading-[1.02] tracking-[-0.035em] text-[#E25A5C] mb-3 break-words">' + sl.big + '</div>';
+        html += '<div class="font-display font-bold text-[23px] leading-[1.18] tracking-[-0.02em] break-words">' + sl.t + '</div>';
+        if (sl.cta) html += '<button type="button" onclick="handleCta(event)" data-cta="form" data-service="Аудит бренда" class="btn-press pointer-events-auto mt-6 w-full h-[56px] rounded-[6px] bg-primary text-white font-bold text-[16px]">Проверить название — 0 ₽</button>';
+        c.innerHTML = html;
+      }
+      clearTimeout(st.timer);
+      var cur = bars ? bars.children[st.s] : null;
+      var fill = cur ? cur.firstChild : null;
+      if (fill) {
+        fill.style.transition = 'none';
+        fill.style.width = '0';
+        fill.getBoundingClientRect();
+        fill.style.transition = 'width ' + STORY_MS + 'ms linear';
+        fill.style.width = '100%';
+      }
+      if (!sl || !sl.cta) { st.timer = setTimeout(nextSlide, STORY_MS); }
+    }
+    function nextSlide() {
+      var s = STORIES[st.i];
+      if (!s) return;
+      if (st.s < s.slides.length - 1) { st.s++; renderStory(); }
+      else if (st.i < STORIES.length - 1) { st.i++; st.s = 0; renderStory(); }
+      else { closeStory(); }
+    }
+    function prevSlide() {
+      if (st.s > 0) { st.s--; } else if (st.i > 0) { st.i--; st.s = 0; }
+      renderStory();
+    }
+
+    /* ================== FAQ ================== */
+    var FAQ = [
+      { q: 'Мне уже пришла претензия — что делать?', a: 'Не отвечайте и не платите до проверки. Пришлите претензию через форму — оценим, есть ли у отправителя права, сроки и реальный размер требований, и предложим линию защиты.' },
+      { q: 'В Яндексе ничего нет — значит, название свободно?', a: 'Нет. Поисковики не показывают поданные заявки и зарегистрированные знаки. Проверяем по базам Роспатента, включая обозначения, сходные до степени смешения.' },
+      { q: 'Домен оплачен — этого мало?', a: 'Домен не даёт прав на название. Если оно совпадает с чужим товарным знаком, правообладатель может через суд добиваться запрета на использование домена. Права на обозначение даёт только регистрация знака.' },
+      { q: 'Можно ли оставить вывеску на латинице?', a: 'С 01.03.2026 иностранные слова на вывесках и в информации для покупателей нужно дублировать на русском. Исключение — зарегистрированные товарные знаки. Проверим, можно ли зарегистрировать ваше название.' },
+      { q: 'Что если в регистрации откажут?', a: 'Аудит снижает этот риск ещё до подачи. Если отказ произошёл по нашей ошибке — бесплатная повторная подача или возврат гонорара.' },
+      { q: 'Сколько стоят пошлины и кому платить?', a: 'Госпошлины вы платите напрямую в Роспатент, без нашей наценки. Точную смету по вашим классам МКТУ дадим в отчёте аудита.' }
+    ];
+    function buildFaq() {
+      var list = $('faq-list');
+      if (!list) return;
+      var html = '';
+      FAQ.forEach(function(f, i) {
+        html += '<div class="faq-item">' +
+                  '<button type="button" class="w-full flex items-start gap-3 py-4 text-left" onclick="toggleFaq(this)">' +
+                    '<span class="font-mono text-[12px] text-primary font-semibold pt-0.5 shrink-0">Q.0' + (i + 1) + '</span>' +
+                    '<span class="flex-1 min-w-0 text-[15.5px] font-semibold leading-snug break-words">' + f.q + '</span>' +
+                    '<i data-lucide="plus" class="faq-icon w-5 h-5 shrink-0"></i>' +
+                  '</button>' +
+                  '<div class="faq-body"><div><p class="pl-[42px] pr-2 pb-4 text-[14px] text-text-muted leading-relaxed">' + f.a + '</p></div></div>' +
+                '</div>';
+      });
+      list.innerHTML = html;
+    }
+    function toggleFaq(btn) {
+      if (!btn) return;
+      var item = btn.closest('.faq-item');
+      if (item) { item.classList.toggle('open'); safeHaptic('selection'); }
+    }
+
+    /* ================== ФОРМА (submitForm) ================== */
+    var formSubmitting = false;
+    var SUBMIT_LABEL = 'Получить аудит бренда — 0 ₽';
+    function fieldError(input, show) {
+      if (!input) return;
+      var msg = input.parentNode ? input.parentNode.querySelector('.field-msg') : null;
+      if (show) { input.classList.add('err'); if (msg) msg.classList.remove('hidden'); }
+      else { input.classList.remove('err'); if (msg) msg.classList.add('hidden'); }
+    }
+    function normalizeTg(v) {
+      var s = v.trim();
+      if (!s) return s;
+      if (s.indexOf('t.me/') !== -1 || s.charAt(0) === '@' || /^\+?\d[\d\s\-()]{5,}$/.test(s)) return s;
+      return '@' + s;
+    }
+    function showStatus(type, html) {
+      var box = $('formStatus');
+      if (!box) return;
+      box.classList.remove('hidden', 'bg-secondary', 'text-white', 'bg-primary/10', 'text-primary', 'border', 'border-primary');
+      if (type === 'success') { box.classList.add('bg-secondary', 'text-white'); }
+      else { box.classList.add('bg-primary/10', 'text-primary', 'border', 'border-primary'); }
+      box.innerHTML = html;
+    }
+    function resetSubmit() {
+      formSubmitting = false;
+      var b = $('submitBtn');
+      if (b) { b.disabled = false; b.innerText = SUBMIT_LABEL; }
+    }
+    function handleFormSubmit(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (formSubmitting) return;
+      var fName = $('f-name'), fTg = $('f-tg'), fBrand = $('f-brand'), fSphere = $('f-sphere');
+      var vName = fName ? fName.value.trim() : '';
+      var vTg = fTg ? normalizeTg(fTg.value) : '';
+      var vBrand = fBrand ? fBrand.value.trim() : '';
+      var vSphere = fSphere ? fSphere.value.trim() : '';
+      var ok = true;
+      fieldError(fName, !vName); if (!vName) ok = false;
+      fieldError(fTg, !vTg); if (!vTg) ok = false;
+      fieldError(fBrand, !vBrand); if (!vBrand) ok = false;
+      fieldError(fSphere, !vSphere); if (!vSphere) ok = false;
+      if (!ok) {
+        safeHaptic('error');
+        showStatus('error', 'Заполните, пожалуйста, все поля — они нужны для точного аудита.');
+        var firstErr = document.querySelector('.field.err');
+        if (firstErr && firstErr.focus) firstErr.focus();
+        return;
+      }
+      var parts = buildContextParts();
+      var sphereFull = vSphere + (parts.length ? ('\n\n[Контекст со страницы: ' + parts.join('; ') + ']') : '');
+
+      formSubmitting = true;
+      var submitBtn = $('submitBtn');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = 'Отправка данных...'; }
+      var statusBox = $('formStatus');
+      if (statusBox) statusBox.classList.add('hidden');
+
+      // СТРОГО МАССИВ ОБЪЕКТОВ, answers — массив строк, title — символ-в-символ со схемой
+      var answers = [
+        { title: Q_NAME, answers: [String(vName)] },
+        { title: Q_TG, answers: [String(vTg)] },
+        { title: Q_BRAND, answers: [String(vBrand)] },
+        { title: Q_SPHERE, answers: [String(sphereFull)] }
+      ];
+
+      if (window.notibot && typeof window.notibot.submitForm === 'function') {
+        var p = null;
+        try { p = window.notibot.submitForm(FORM_ID, answers); } catch (err0) { p = null; }
+        if (!p || typeof p.then !== 'function') {
+          resetSubmit();
+          safeHaptic('error');
+          showStatus('error', 'Не удалось отправить заявку. Попробуйте ещё раз или напишите нам в Telegram.');
+          return;
+        }
+        p.then(function() {
+          safeHaptic('success');
+          var formElement = $('lead-form-fields');
+          if (formElement) formElement.style.display = 'none';
+          var ctx = $('lead-context');
+          if (ctx) ctx.classList.add('hidden');
+          showStatus('success', '<div class="py-4 text-center"><div class="text-3xl mb-2">🎉</div><div class="font-bold text-base mb-1">Спасибо! Ваша заявка принята.</div><div class="text-xs opacity-80">Отчёт по бренду «' + esc(vBrand) + '» — в течение 24 часов. Открываем чат с юристом…</div></div>');
+          setTimeout(function() { openExternalLink(REDIRECT_URL); }, 1200);
+        }).catch(function(error) {
+          safeHaptic('error');
+          var code = error && error.code ? error.code : '';
+          var msg;
+          if (code === 'ERR_RATE_LIMIT') msg = 'Подождите несколько секунд перед повторной отправкой.';
+          else if (code === 'ERR_VALIDATION_FAILED') {
+            msg = 'Проверьте заполнение полей.';
+            if (error && error.details) { try { msg += ' ' + (typeof error.details === 'string' ? error.details : JSON.stringify(error.details)); } catch (e2) {} }
+          }
+          else if (code === 'ERR_NOT_FOUND') msg = 'Форма не найдена. Напишите нам в Telegram — ответим вручную.';
+          else if (code === 'ERR_NO_PARENT') msg = 'Приложение запущено вне Telegram-магазина.';
+          else if (code === 'ERR_INVALID_PAYLOAD') msg = 'Неверный формат данных формы.';
+          else msg = (error && error.message) ? error.message : 'Ошибка отправки. Попробуйте ещё раз.';
+          showStatus('error', 'Ошибка: ' + esc(msg));
+        }).then(function() {
+          resetSubmit();
+        });
+      } else {
+        setTimeout(function() {
+          resetSubmit();
+          showStatus('error', 'Отправка доступна только внутри Telegram Mini App.');
+        }, 500);
+      }
+    }
+    function initFormHelpers() {
+      ['f-name', 'f-tg', 'f-brand', 'f-sphere'].forEach(function(id) {
+        var el = $(id);
+        if (el) el.addEventListener('input', function() {
+          fieldError(el, false);
+          if (id === 'f-brand') el.removeAttribute('data-autofill');
+        });
+      });
+      try {
+        var tg = $('f-tg');
+        if (tg && !tg.value && window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.username) {
+          tg.value = '@' + Telegram.WebApp.initDataUnsafe.user.username;
+        }
+      } catch (e) {}
+      var sInput = $('summons-input');
+      if (sInput) {
+        var deb = null;
+        sInput.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') { ev.preventDefault(); runSummons(true); } });
+        sInput.addEventListener('input', function() {
+          clearTimeout(deb);
+          deb = setTimeout(function() { if (sInput.value.trim().length >= 2) runSummons(false); }, 900);
+        });
+      }
+    }
+
+    /* ================== ИНИЦИАЛИЗАЦИЯ UI ================== */
+    function initUI() {
+      buildMktu();
+      buildIpChips();
+      buildBusiness();
+      buildCostLines();
+      buildFlipCards();
+      buildStories();
+      buildFaq();
+      ['rng-sign', 'rng-pack', 'rng-site', 'rng-ads', 'rng-revenue', 'rng-months'].forEach(function(id) { var r = $(id); if (r) updateFill(r); });
+      recalc();
+      initFlipDots();
+      initObservers();
+      initFormHelpers();
+      refreshIcons();
+      setTimeout(twTick, 500);
+      window.addEventListener('scroll', onScroll, { passive: true });
+      document.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') closeStory(); });
+    }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initUI); } else { initUI(); }
+
+    /* ================== NOTIBOT INIT (РЕЖИМ А — ХАРДКОД) ================== */
+    // applyThemeColors НЕ СУЩЕСТВУЕТ в коде. Никаких setProperty для цветов.
+    var elLoading = document.getElementById('loading-screen');
+    var elUserGreeting = document.getElementById('userGreeting');
+    var elUserAvatar = document.getElementById('userAvatar');
+    function getInitials(name) {
+      if (!name) return '?';
+      var parts = name.trim().split(/\s+/);
+      var a = parts[0] ? parts[0].charAt(0) : '';
+      var b = parts.length > 1 ? parts[1].charAt(0) : '';
+      return (a + b).toUpperCase() || '?';
+    }
+    function applyPersonalization(user) {
+      if (!user) return;
+      if (elUserGreeting) {
+        elUserGreeting.textContent = user.displayName ? ('Привет, ' + user.displayName + '!') : 'Привет!';
+      }
+      if (elUserAvatar) {
+        var initials = getInitials(user.displayName);
+        if (user.photoURL) {
+          elUserAvatar.innerHTML = '';
+          var img = document.createElement('img');
+          img.src = user.photoURL;
+          img.alt = '';
+          img.setAttribute('data-replaceable-image', 'true');
+          img.className = 'w-full h-full object-cover rounded-full pointer-events-auto cursor-pointer';
+          img.onerror = function() { if (elUserAvatar) { elUserAvatar.innerHTML = ''; elUserAvatar.textContent = initials; } };
+          elUserAvatar.appendChild(img);
+        } else if (user.displayName) {
+          elUserAvatar.innerHTML = '';
+          elUserAvatar.textContent = initials;
+        }
+      }
+      var fName = document.getElementById('f-name');
+      if (fName && !fName.value && user.displayName) { fName.value = String(user.displayName).split(/\s+/)[0]; }
+    }
+    function hideLoader() {
+      if (elLoading && elLoading.style.display !== 'none') {
+        elLoading.style.opacity = '0';
+        setTimeout(function() { if (elLoading) elLoading.style.display = 'none'; }, 200);
+      }
+    }
+    function handleNotibotInit(user, app) {
+      // ВАЖНО: app.colors ИГНОРИРУЮТСЯ (Режим А). Только персонализация и скрытие лоадера.
+      applyPersonalization(user);
+      hideLoader();
+    }
+    function isNonEmptyObj(obj) {
+      try { return obj && typeof obj === 'object' && Object.keys(obj).length > 0; } catch (e) { return false; }
+    }
+    if (window.notibot) {
+      try {
+        if (typeof window.notibot.onUpdate === 'function') {
+          window.notibot.onUpdate(function(user) { applyPersonalization(user); });
+        }
+      } catch (e) {}
+      if (window.notibotInitData) {
+        handleNotibotInit(window.notibotInitData.user, window.notibotInitData.app);
+      } else if (isNonEmptyObj(window.notibot.app) || isNonEmptyObj(window.notibot.user)) {
+        handleNotibotInit(window.notibot.user, window.notibot.app);
+      }
+      setTimeout(function() { hideLoader(); }, 800);
+    } else {
+      setTimeout(function() { hideLoader(); }, 300);
+    }
+  </script>
+</body>
+</html>
